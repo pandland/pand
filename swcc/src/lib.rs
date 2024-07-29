@@ -16,7 +16,6 @@ pub extern "C" fn transform_sync(ts_code: *const u8, code_len: usize) -> *mut i8
     let js_code = output.code;
     let js_code = js_code.into_bytes();
 
-        // Convert the result to a C-compatible string
     let result = std::ffi::CString::new(js_code).expect("CString::new failed");
     result.into_raw()
 }
