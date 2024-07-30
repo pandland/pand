@@ -4,9 +4,13 @@
 
 #include <v8.h>
 #include <libplatform/libplatform.h>
+
 #include <fstream>
 #include <sstream>
 #include <iostream>
+
+#include <event.h>
+#include <luxio.h>
 
 std::string ReadFile(const std::string& filename) {
     std::ifstream file(filename);
@@ -29,7 +33,25 @@ void Println(const v8::FunctionCallbackInfo<v8::Value>& args) {
     std::cout << *str << std::endl;
 }
 
+void timer_once(lx_timer_t *timer) {
+    printf("Should happen only once\n");
+}
+
+void timer_test() {
+    lx_io_t ctx = lx_init();
+    lx_timer_t timer;
+    lx_timer_init(&ctx, &timer);
+    lx_timer_start(&timer, timer_once, 1000);
+
+    lx_run(&ctx);
+}
+
 int main(int argc, char* argv[]) {
+    timer_test();
+
+    const char* flags = "--max-old-space-size=4096";
+    v8::V8::SetFlagsFromString(flags);
+
     v8::V8::InitializeICUDefaultLocation(argv[0]);
     v8::V8::InitializeExternalStartupData(argv[0]);
 

@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/v8/include",
-                "${workspaceFolder}/swcc/include"
+                "${workspaceFolder}/swcc/include",
+                "${workspaceFolder}/luxio/src"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
