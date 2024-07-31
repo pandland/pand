@@ -101,6 +101,7 @@
     "queue": "cpp",
     "semaphore": "cpp",
     "stack": "cpp",
-    "syncstream": "cpp"
+    "syncstream": "cpp",
+    "print": "cpp"
   }
 }

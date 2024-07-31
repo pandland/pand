@@ -2,6 +2,9 @@
 #include <libplatform/libplatform.h>
 #include "globals.cc"
 #include "loader.cc"
+#include "timers.cc"
+
+#include <luxio.h>
 
 namespace runtime {
 
@@ -28,10 +31,14 @@ public:
   }
 
   void start(const char *entryfile) {
+    lx_io_t ctx = lx_init();
+
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
-    
+
     runtime::Globals globals(global, isolate);
+    Timers::initialize(&ctx);
+    Timers::instance()->setup(global, isolate);
     globals.setup();
 
     v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
@@ -40,6 +47,8 @@ public:
 
     runtime::Loader entryscript(entryfile);
     entryscript.execute(isolate, context);
+
+    lx_run(&ctx);
   }
 };
 

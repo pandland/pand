@@ -27,4 +27,16 @@ class Person {
 }
 
 const person = new Person("Dominika");
-person.sayHello();
+
+// intervals doesnt work
+//setInterval(person.sayHello, 1000);
+
+const id = setTimeout(() => {
+  println("Hello World")
+}, 1000);
+
+const id2 = setTimeout(() => {
+  person.sayHello();
+}, 5 * 1000);
+
+clearTimeout(id2);
