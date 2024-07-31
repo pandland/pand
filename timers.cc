@@ -59,7 +59,7 @@ public:
     TimerWrap *timer = new TimerWrap;
     timer->id = get_id();
     timer->callback.Reset(v8::Isolate::GetCurrent(), callback);
-    timer->type = TIMEOUT;
+    timer->type = INTERVAL;
     lx_timer_init(ctx, &timer->handle);
     timer->handle.data = timer;
 
@@ -108,13 +108,15 @@ public:
       return;
     }
 
-    v8::Local<v8::Function> callback = v8::Local<v8::Function>::New(
-      isolate,
-      timer->callback
-    );
-    //v8::Local<v8::Value> result;
+    v8::Local<v8::Function> callback = timer->callback.Get(isolate);
+
+    // maybe handle it in better way?
+    if (callback.IsEmpty()) {
+      return;
+    }
+
     callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
-    
+
     if (timer->type == TIMEOUT) {
       Timers::instance()->cleanup(timer);
     }

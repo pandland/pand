@@ -28,15 +28,15 @@ class Person {
 
 const person = new Person("Dominika");
 
-// intervals doesnt work
-//setInterval(person.sayHello, 1000);
-
-const id = setTimeout(() => {
-  println("Hello World")
+const id = setInterval(() => {
+  println("Repeat");
 }, 1000);
 
-const id2 = setTimeout(() => {
-  person.sayHello();
-}, 5 * 1000);
+setTimeout(() => {
+  println("Hello World");
+}, 1000);
 
-clearTimeout(id2);
+setTimeout(() => {
+  clearInterval(id);
+}, 10 * 1000);
+
