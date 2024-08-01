@@ -21,7 +21,6 @@ struct TimerWrap {
 
 class Timers {
   lx_io_t *ctx;
-
   TimerId ids = 1;
   std::unordered_map<TimerId, TimerWrap*> active_timers;
 
@@ -70,30 +69,15 @@ public:
   }
   
   void cleanup(TimerWrap *timer) {
-    auto result = active_timers.erase(timer->id);
+    active_timers.erase(timer->id);
+    timer->callback.Reset();
     delete timer;
   }
 
-  void clear_timeout(TimerId id) {
+  void clear_timer(TimerId id) {
     auto it = active_timers.find(id);
 
     if (it != active_timers.end()) {
-      if (it->second->type != TIMEOUT) {
-        return;
-      }
-
-      lx_timer_stop(&it->second->handle);
-      cleanup(it->second);
-    }
-  }
-
-  void clear_interval(TimerId id) {
-    auto it = active_timers.find(id);
-    if (it != active_timers.end()) {
-      if (it->second->type != INTERVAL) {
-        return;
-      }
-
       lx_timer_stop(&it->second->handle);
       cleanup(it->second);
     }
@@ -123,12 +107,10 @@ public:
   }
 
   void setup(v8::Local<v8::ObjectTemplate> global, v8::Isolate *isolate) {
-    //v8::Isolate *isolate = v8::Isolate::GetCurrent();
     global->Set(isolate, "setTimeout", v8::FunctionTemplate::New(isolate, JS_setTimeout));
     global->Set(isolate, "setInterval", v8::FunctionTemplate::New(isolate, JS_setInterval));
-
-    global->Set(isolate, "clearTimeout", v8::FunctionTemplate::New(isolate, JS_clearTimeout));
-    global->Set(isolate, "clearInterval", v8::FunctionTemplate::New(isolate, JS_clearInterval));
+    global->Set(isolate, "clearTimeout", v8::FunctionTemplate::New(isolate, JS_clearTimer));
+    global->Set(isolate, "clearInterval", v8::FunctionTemplate::New(isolate, JS_clearTimer));
   }
 
     /* JavaScript bindings */
@@ -156,20 +138,12 @@ public:
     args.GetReturnValue().Set(v8::Number::New(isolate, id));
   }
 
-  static void JS_clearTimeout(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  static void JS_clearTimer(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate *isolate = args.GetIsolate();
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     int64_t id = args[0]->IntegerValue(context).ToChecked();
-    Timers::instance()->clear_timeout(id);
-  }
-
-  static void JS_clearInterval(const v8::FunctionCallbackInfo<v8::Value>& args) {
-    v8::Isolate *isolate = args.GetIsolate();
-    v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-    int64_t id = args[0]->IntegerValue(context).ToChecked();
-    Timers::instance()->clear_interval(id);
+    Timers::instance()->clear_timer(id);
   }
 };
 
