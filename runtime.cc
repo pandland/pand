@@ -39,13 +39,15 @@ public:
     IO::create();
     lx_io_t *ctx = IO::get()->ctx;
 
-    runtime::Globals globals(global, isolate);
+    Globals globals(global, isolate);
     TcpServer::initialize(global, isolate);
     Timers::initialize(ctx);
     Timers::instance()->setup(global, isolate);
     globals.setup();
 
     v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
+    TcpStream::initialize(global, isolate, context);
+
     v8::Context::Scope context_scope(context);
     v8::Isolate::Scope isolate_scope(isolate);
 

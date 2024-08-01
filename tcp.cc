@@ -2,9 +2,77 @@
 #include <luxio.h>
 #include <assert.h>
 
+#include <string.h>
 #include "io.cc"
 
 namespace runtime {
+
+class TcpStream {
+public:
+  lx_connection_t *conn;
+  static v8::Persistent<v8::Function> streamConstructor;
+
+  static void initialize(v8::Local<v8::ObjectTemplate> exports, v8::Isolate *isolate, v8::Local<v8::Context> context) {
+    v8::Local<v8::FunctionTemplate> t = v8::FunctionTemplate::New(isolate, TcpStream::constructor);
+    t->SetClassName(v8::String::NewFromUtf8(isolate, "TcpStream").ToLocalChecked());
+    t->InstanceTemplate()->SetInternalFieldCount(1);
+
+    v8::Local<v8::FunctionTemplate> writeTemplate = v8::FunctionTemplate::New(isolate, TcpStream::write);
+    t->PrototypeTemplate()->Set(isolate, "write", writeTemplate);
+
+    v8::Local<v8::FunctionTemplate> closeTemplate = v8::FunctionTemplate::New(isolate, TcpStream::close);
+    t->PrototypeTemplate()->Set(isolate, "close", closeTemplate);
+    
+    v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
+    TcpStream::streamConstructor.Reset(isolate, func);
+    //exports->Set(v8::String::NewFromUtf8(isolate, "TcpStream").ToLocalChecked(), func);
+  }
+
+  static void constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    assert(args.IsConstructCall());
+
+    TcpStream *stream = new TcpStream;
+    args.This()->SetAlignedPointerInInternalField(0, stream);
+  }
+
+  static void write(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    assert(args.Length() == 1);
+    
+    v8::String::Utf8Value str(args.GetIsolate(), args[0]);
+    TcpStream *stream = static_cast<TcpStream*>(args.Holder()->GetAlignedPointerFromInternalField(0));
+    char *buf = (char*)malloc(sizeof(char) * str.length());
+    strcpy(buf, *str);
+
+    lx_write_t *write_op = lx_write_alloc(buf, str.length());
+    lx_write(write_op, stream->conn, TcpStream::handle_write);
+  }
+
+  static void handle_write(lx_write_t *write_op, int status) {
+    free((void*)write_op->buf);
+    free(write_op);
+  }
+
+  static void close(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    assert(args.Length() == 0);
+    TcpStream *stream = static_cast<TcpStream*>(args.Holder()->GetAlignedPointerFromInternalField(0));
+
+    lx_close(stream->conn);
+  }
+
+  static void on_data(const v8::FunctionCallbackInfo<v8::Value> &args) {}
+
+  static void on_close(const v8::FunctionCallbackInfo<v8::Value> &args) {}
+
+  /* handlers for event loop */
+  static void handle_data(lx_connection_t *conn) {}
+
+  static void handle_close(lx_connection_t *conn) {
+    printf("Closing connection\n");
+    delete static_cast<TcpStream*>(conn->data);
+  }
+};
+
+v8::Persistent<v8::Function> TcpStream::streamConstructor;
 
 class TcpServer {
   v8::Global<v8::Function> callback;
@@ -43,9 +111,15 @@ public:
       return;
     }
 
-    callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
-    lx_close(conn);
+    v8::Local<v8::Function> cons = v8::Local<v8::Function>::New(isolate, TcpStream::streamConstructor);
+    v8::Local<v8::Object> tcpStreamWrap = cons->NewInstance(context).ToLocalChecked();
+    TcpStream *stream = static_cast<TcpStream*>(tcpStreamWrap->GetAlignedPointerFromInternalField(0));
+    stream->conn = conn;
+    conn->data = (void*)stream;
+    conn->onclose = TcpStream::handle_close;
+
+    v8::Local<v8::Value> args[1] = {tcpStreamWrap};
+    callback->Call(context, v8::Undefined(isolate), 1, args).ToLocalChecked();
   }
 };
-
 }

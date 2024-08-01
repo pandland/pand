@@ -102,6 +102,7 @@
     "semaphore": "cpp",
     "stack": "cpp",
     "syncstream": "cpp",
-    "print": "cpp"
+    "print": "cpp",
+    "*.inc": "cpp"
   }
 }
