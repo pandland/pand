@@ -4,6 +4,8 @@ interface Socket {
   close: () => void;
 }
 
+println(`$HOME is: ${env('HOME')}`);
+
 function getPathFromRequest(chunk: string) {
   const line = chunk.split('\r\n')[0];
   if (!line) {
@@ -33,4 +35,4 @@ tcpListen((socket: Socket) => {
 
 setInterval(() => {
   println("Repeat");
-}, 2000);
+}, 3000);

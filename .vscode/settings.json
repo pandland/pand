@@ -103,6 +103,7 @@
     "stack": "cpp",
     "syncstream": "cpp",
     "print": "cpp",
-    "*.inc": "cpp"
+    "*.inc": "cpp",
+    "netfwd": "cpp"
   }
 }
