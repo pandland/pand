@@ -92,7 +92,8 @@ public:
       return;
     }
 
-    callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
+    v8::Local<v8::Value> args[1] = {v8::String::NewFromUtf8(isolate, buf, v8::NewStringType::kNormal, res).ToLocalChecked()};
+    callback->Call(context, v8::Undefined(isolate), 1, args).ToLocalChecked();
   }
 
   static void handle_close(lx_connection_t *conn) {
