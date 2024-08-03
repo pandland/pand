@@ -7,20 +7,20 @@
 
 #include <assert.h>
 #include <v8.h>
+#include "js_internals.h"
 
 namespace runtime {
-
-#define MODULES_DIR "./js"
 
 class Loader {
 public:
   void execute(v8::Isolate* isolate, v8::Local<v8::Context> context) {
-    std::ifstream file(MODULES_DIR "/bootstrap.js");
-    std::stringstream buffer;
-    buffer << file.rdbuf();
+    auto result = js_internals.find("bootstrap");
+    if (result == js_internals.end()) {
+      printf("Unexpected error - unable to find entrypoint JS file - you forgot to generate headers?\n");
+      return;
+    }
 
-    std::string src = buffer.str();
-
+    std::string src = result->second;
     v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, src.c_str()).ToLocalChecked();
     v8::Local<v8::Script> script = v8::Script::Compile(context, source).ToLocalChecked();
 
