@@ -1,16 +1,15 @@
 class Module {
-  exports = {};
-
   constructor(path) {
     this.path = path;
+    this.exports = {};
   }
 
   static _cache = new Map();
 
   static require(path) {
-    if (this._cache.has(path)) {
+    if (Module._cache.has(path)) {
       println(`Cache hit: ${path}`);
-      const module = this._cache.get(path);
+      const module = Module._cache.get(path);
       return module.exports;
     }
 
@@ -19,11 +18,13 @@ class Module {
 
     const exports = module.exports;
 
+    Module._cache.set(path, module);
+    
     const func = load(path);
     // __filename and __dirname will be implemented later
-    func(exports, Module.require.bind(Module), module, path, path);
+    func(exports, Module.require, module, path, path);
     
-    this._cache.set(path, module);
+    Module._cache.set(path, module);
 
     return module.exports;
   }

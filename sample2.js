@@ -1,4 +1,6 @@
 const hello = require('./hello.js')
 
-println("Sample2 here!");
-hello.sayHello('xd');
+exports.saySample2 = () => {
+  println("From sample2");
+  hello.sayHello("sample2");
+}

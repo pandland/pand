@@ -59,6 +59,10 @@ public:
 
       args.GetReturnValue().Set(func);
   }
+
+  static void ResolveModuleCallback(v8::Local<v8::Context> context, v8::Local<v8::Module> module, v8::Local<v8::Object> meta) {
+    printf("Importing module\n");
+  }
 };
 
 }

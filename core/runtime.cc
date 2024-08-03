@@ -51,6 +51,7 @@ public:
     v8::Isolate::Scope isolate_scope(isolate);
 
     Loader loader;
+    isolate->SetHostInitializeImportMetaObjectCallback(Loader::ResolveModuleCallback);
     loader.execute(isolate, context);
 
     lx_run(ctx);
