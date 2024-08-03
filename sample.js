@@ -1,8 +1,8 @@
 const { sayHello } = require("./hello.js");
-require('./sample2.js');
+const { saySample2 } = require('./sample2.js');
 
-//println(`$HOME is: ${env('HOME')}`);
 sayHello("From another module!!!!");
+saySample2();
 
 function getPathFromRequest(chunk) {
   const line = chunk.split('\r\n')[0];

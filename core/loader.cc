@@ -4,10 +4,13 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 
 #include <assert.h>
 #include <v8.h>
-#include "js_internals.h"
+#include "js_internals.hh"
+
+namespace fs = std::filesystem;
 
 namespace runtime {
 
@@ -32,12 +35,13 @@ public:
       assert(args[0]->IsString());
 
       v8::Isolate *isolate = args.GetIsolate();
+      v8::HandleScope handle_scope(isolate);
       //v8::Local<v8::Context> context = v8::Context::New(isolate);
       //v8::Context::Scope context_scope(context);
       v8::Local<v8::Context> context = isolate->GetCurrentContext();
       
       v8::String::Utf8Value filename(isolate, args[0]);
-      printf("Loading js file: %s\n", *filename);
+
       std::ifstream file(*filename);
       std::stringstream buffer;
       buffer << "(function (exports, require, module, __filename, __dirname) { ";
@@ -50,14 +54,17 @@ public:
       v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, src.c_str()).ToLocalChecked();
       v8::Local<v8::Script> script = v8::Script::Compile(context, source, &origin).ToLocalChecked();
       
+      v8::Local<v8::Object> mod = v8::Object::New(isolate);
       v8::Local<v8::Value> func = script->Run(context).ToLocalChecked();
       
+      mod->Set(context, v8::String::NewFromOneByte(isolate, (const uint8_t*)"func").ToLocalChecked(), func).ToChecked();
+
       if (!func->IsFunction()) {
         printf("Invalid code:\n %s\n", src.c_str());
         printf("Invalid module!\n");
       }
 
-      args.GetReturnValue().Set(func);
+      args.GetReturnValue().Set(mod);
   }
 
   static void ResolveModuleCallback(v8::Local<v8::Context> context, v8::Local<v8::Module> module, v8::Local<v8::Object> meta) {

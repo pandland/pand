@@ -3,6 +3,7 @@ import os
 def generate_cpp_header(folder_path, output_file):
     header_guard = "JS_MODULES_H"
     with open(output_file, 'w') as f:
+        f.write("/* AUTO GENERATED FILE - DO NOT EDIT IT MANUALLY */\n")
         f.write(f"#ifndef {header_guard}\n")
         f.write(f"#define {header_guard}\n\n")
         f.write("#include <unordered_map>\n")
@@ -28,6 +29,6 @@ def generate_cpp_header(folder_path, output_file):
         f.write(f"#endif // {header_guard}\n")
 
 folder_path = "./js"
-output_file = "core/js_internals.h" 
+output_file = "core/js_internals.hh" 
 
 generate_cpp_header(folder_path, output_file)

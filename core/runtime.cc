@@ -4,9 +4,11 @@
 #include "loader.cc"
 #include "timers.cc"
 #include "io.cc"
+#include <filesystem>
 
 #include <luxio.h>
 
+namespace fs = std::filesystem;
 namespace runtime {
 
 /* entrypoint class for JS runtime */
@@ -35,7 +37,8 @@ public:
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
-    global->Set(isolate, "_ENTRYFILE", v8::String::NewFromUtf8(isolate, entryfile).ToLocalChecked());
+    std::string entrypath = fs::absolute(entryfile).string();
+    global->Set(isolate, "__entryfile", v8::String::NewFromUtf8(isolate, entrypath.c_str()).ToLocalChecked());
     IO::create();
     lx_io_t *ctx = IO::get()->ctx;
 
