@@ -34,7 +34,8 @@ public:
   void start(const char *entryfile) {
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
-    
+
+    global->Set(isolate, "_ENTRYFILE", v8::String::NewFromUtf8(isolate, entryfile).ToLocalChecked());
     IO::create();
     lx_io_t *ctx = IO::get()->ctx;
 
@@ -49,8 +50,8 @@ public:
     v8::Context::Scope context_scope(context);
     v8::Isolate::Scope isolate_scope(isolate);
 
-    runtime::Loader entryscript(entryfile);
-    entryscript.execute(isolate, context);
+    Loader loader;
+    loader.execute(isolate, context);
 
     lx_run(ctx);
   }

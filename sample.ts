@@ -1,10 +1,13 @@
+const { sayHello } = require("./log.ts");
+
 interface Socket {
   write: (data: string) => void;
   read: (cb: (chunk: string) => void) => void;
   close: () => void;
 }
 
-println(`$HOME is: ${env('HOME')}`);
+//println(`$HOME is: ${env('HOME')}`);
+sayHello("From another module!!!!");
 
 function getPathFromRequest(chunk: string) {
   const line = chunk.split('\r\n')[0];

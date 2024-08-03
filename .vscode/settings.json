@@ -104,6 +104,10 @@
     "syncstream": "cpp",
     "print": "cpp",
     "*.inc": "cpp",
-    "netfwd": "cpp"
+    "netfwd": "cpp",
+    "strstream": "cpp",
+    "propagate_const": "cpp",
+    "hash_map": "cpp",
+    "hash_set": "cpp"
   }
 }
