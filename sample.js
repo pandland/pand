@@ -1,15 +1,10 @@
-const { sayHello } = require("./log.ts");
-
-interface Socket {
-  write: (data: string) => void;
-  read: (cb: (chunk: string) => void) => void;
-  close: () => void;
-}
+const { sayHello } = require("./hello.js");
+require('./sample2.js');
 
 //println(`$HOME is: ${env('HOME')}`);
 sayHello("From another module!!!!");
 
-function getPathFromRequest(chunk: string) {
+function getPathFromRequest(chunk) {
   const line = chunk.split('\r\n')[0];
   if (!line) {
     return "Invalid";
@@ -25,7 +20,7 @@ function getPathFromRequest(chunk: string) {
 
 const net = bind("tcp");
 
-net.tcpListen((socket: Socket) => {
+net.tcpListen((socket) => {
   println("Client connected");
 
   socket.read((chunk) => {

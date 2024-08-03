@@ -37,9 +37,7 @@ public:
       v8::Local<v8::Context> context = isolate->GetCurrentContext();
       
       v8::String::Utf8Value filename(isolate, args[0]);
-      
-      printf("Loading file: %s\n", *filename);
-
+      printf("Loading js file: %s\n", *filename);
       std::ifstream file(*filename);
       std::stringstream buffer;
       buffer << "(function (exports, require, module, __filename, __dirname) { ";
