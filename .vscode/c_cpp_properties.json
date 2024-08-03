@@ -4,9 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/v8/include",
-                "${workspaceFolder}/swcc/include",
-                "${workspaceFolder}/luxio/src"
+                "${workspaceFolder}/libs/v8/include",
+                "${workspaceFolder}/libs/swcc/include",
+                "${workspaceFolder}/libs/luxio/src"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

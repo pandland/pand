@@ -2,14 +2,17 @@
 
 # done.js
 
-My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++.
+My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++. Very unstable.
+
+Once I will figure out how things work together - I will rewrite this project.
 
 ### TODO:
 
 - [x] Try to bind SWC (written in Rust) into my C++ codebase
 - [x] Integrate my async IO library for runtime's event loop: [luxio](https://github.com/michaldziuba03/luxio).
 - [x] Create timers
-- [x] Clunky TCP support 
+- [x] Clunky TCP support
+- [ ] Basic module system, similar to CommonJS
 
 I try to support TypeScript from the beginning - currently every TS file is stripped to JS (and enums are not supported).
 

@@ -20,19 +20,17 @@ function getPathFromRequest(chunk: string) {
   return path;
 }
 
-tcpListen((socket: Socket) => {
+const net = bind("tcp");
+
+net.tcpListen((socket: Socket) => {
   println("Client connected");
 
   socket.read((chunk) => {
     const path = getPathFromRequest(chunk);
-    println(`Received data:\n${path}`);
+    println(`Received data`);
     const response = `<h1>Path: ${path}</h1>`;
     socket.write(`HTTP/1.1 200 OK\r\nContent-Length: ${response.length}\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n`);
     socket.write(response);
     socket.close();
   });
 }, 8000);
-
-setInterval(() => {
-  println("Repeat");
-}, 3000);
