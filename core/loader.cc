@@ -55,7 +55,7 @@ public:
       
       std::string src = buffer.str();
       src = (char *)transform_sync((unsigned char *)src.c_str(), src.length());
-      v8::ScriptOrigin origin(v8::String::NewFromUtf8(isolate, *filepath).ToLocalChecked());
+      v8::ScriptOrigin origin(v8_value(isolate, *filepath));
       v8::Local<v8::String> source = v8_value(isolate, src);
       v8::Local<v8::Script> script = v8::Script::Compile(context, source, &origin).ToLocalChecked();
       
