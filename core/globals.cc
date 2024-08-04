@@ -18,7 +18,7 @@ public:
     global->Set(isolate, "print", v8::FunctionTemplate::New(isolate, print));
     global->Set(isolate, "env", v8::FunctionTemplate::New(isolate, env));
     global->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, bind));
-    global->Set(isolate, "load", v8::FunctionTemplate::New(isolate, Loader::load));
+    //global->Set(isolate, "load", v8::FunctionTemplate::New(isolate, Loader::load));
   }
 
   static void println(const v8::FunctionCallbackInfo<v8::Value>& args) {

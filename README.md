@@ -12,7 +12,7 @@ Once I will figure out how things work together - I will rewrite this project.
 - [x] Integrate my async IO library for runtime's event loop: [luxio](https://github.com/michaldziuba03/luxio).
 - [x] Create timers
 - [x] Clunky TCP support
-- [ ] Basic module system, similar to CommonJS
+- [ ] Basic support for ES6 imports
 
 I try to support TypeScript from the beginning - currently every TS file is stripped to JS (and enums are not supported).
 

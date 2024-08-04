@@ -1,6 +1,6 @@
-const hello = require('./hello.js')
+import { test1 } from './samples/test.js';
 
-exports.saySample2 = () => {
-  hello.sayHello('sample2');
-  println("From sample2");
+export function saySample2() {
+  println("Say hello 2 module");
+  test1();
 }
