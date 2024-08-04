@@ -3,6 +3,7 @@ const { saySample2 } = require('./sample2.js');
 
 sayHello("From another module!!!!");
 saySample2();
+println(`__dirname is: ${__dirname} and __filename is: ${__filename}`);
 
 function getPathFromRequest(chunk) {
   const line = chunk.split('\r\n')[0];

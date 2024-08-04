@@ -18,11 +18,10 @@ class Module {
 
     Module._cache.set(path, module);
     
-    const { func } = load(path);
+    const mod = load(path);
     module.loaded = true;
 
-    // __filename and __dirname will be implemented later
-    func(exports, Module.require, module, path, path);
+    mod.func(exports, Module.require, module, mod.__filename, mod.__dirname);
     
     Module._cache.set(path, module);
 

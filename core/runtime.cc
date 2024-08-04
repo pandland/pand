@@ -54,7 +54,7 @@ public:
     v8::Isolate::Scope isolate_scope(isolate);
 
     Loader loader;
-    isolate->SetHostInitializeImportMetaObjectCallback(Loader::ResolveModuleCallback);
+    //isolate->SetHostImportModuleDynamicallyCallback(Loader::ResolveES6Module);
     loader.execute(isolate, context);
 
     lx_run(ctx);
