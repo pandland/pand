@@ -17,6 +17,7 @@ namespace fs = std::filesystem;
 namespace runtime
 {
   std::unordered_map<int, std::string> absolute_paths;
+  std::unordered_map<std::string, v8::Global<v8::Module>> resolve_cache;
 
   class Loader
   {
@@ -41,14 +42,30 @@ namespace runtime
 
       v8::ScriptCompiler::Source script_source(source, origin);
       v8::Local<v8::Module> mod = v8::ScriptCompiler::CompileModule(isolate, &script_source).ToLocalChecked();
-      
       absolute_paths.emplace(mod->ScriptId(), path);
-      mod->InstantiateModule(context, Loader::es6_import).IsJust();
-      mod->Evaluate(context).ToLocalChecked();
+      bool intialized = mod->InstantiateModule(context, Loader::load).IsJust();
+
+      v8::TryCatch try_catch(isolate);
+      v8::MaybeLocal<v8::Value> result = mod->Evaluate(context);
+
+      if (result.IsEmpty()) {
+          v8::String::Utf8Value error(isolate, try_catch.Exception());
+          printf("Exception: %s\n", *error);
+          return;
+      }
+
+      v8::Local<v8::Value> value = result.ToLocalChecked();
+      if (value->IsPromise()) {
+          v8::Local<v8::Promise> promise = value.As<v8::Promise>();
+          if (promise->State() == v8::Promise::kRejected) {
+              v8::String::Utf8Value error(isolate, promise->Result());
+              printf("%s\n", *error);
+          }
+      }
     }
 
     // Not implemented yet!
-    static v8::MaybeLocal<v8::Promise> resolve(
+    static v8::MaybeLocal<v8::Promise> dynamic_load(
         v8::Local<v8::Context> context,
         v8::Local<v8::Data> host_defined_options,
         v8::Local<v8::Value> resource_name,
@@ -64,9 +81,15 @@ namespace runtime
       return handle_scope.Escape(resolver->GetPromise());
     }
 
-    static void set_meta(v8::Local<v8::Context> context, v8::Local<v8::Module> module, v8::Local<v8::Object> meta) {}
+    static void set_meta(v8::Local<v8::Context> context, v8::Local<v8::Module> module, v8::Local<v8::Object> meta) {
+      auto result = absolute_paths.find(module->ScriptId());
+      if (result != absolute_paths.end()) {
+        v8::Isolate *isolate = context->GetIsolate();
+        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, result->second)).Check();
+      }
+    }
 
-    static v8::MaybeLocal<v8::Module> es6_import(
+    static v8::MaybeLocal<v8::Module> load(
         v8::Local<v8::Context> context,
         v8::Local<v8::String> specifier,
         v8::Local<v8::FixedArray> import_assertions,
@@ -113,6 +136,7 @@ namespace runtime
         return module;
       }
 
+      printf("Error: something went wrong :o\n");
       return v8::MaybeLocal<v8::Module>();
     }
   };

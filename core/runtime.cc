@@ -55,6 +55,7 @@ public:
 
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::resolve);
+    isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
     loader.execute(isolate, context, entrypath);
 
     lx_run(ctx);
