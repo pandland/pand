@@ -1,12 +1,12 @@
 #include <v8.h>
 #include <libplatform/libplatform.h>
-#include "globals.cc"
+#include <filesystem>
+#include <luxio.h>
+
 #include "loader.cc"
 #include "timers.cc"
 #include "io.cc"
-#include <filesystem>
-
-#include <luxio.h>
+#include "tcp.cc"
 
 namespace fs = std::filesystem;
 namespace runtime {
@@ -42,10 +42,9 @@ public:
     IO::create();
     lx_io_t *ctx = IO::get()->ctx;
 
-    Globals globals(global, isolate);
+    Runtime::initialize(global, isolate);
     Timers::initialize(ctx);
     Timers::instance()->setup(global, isolate);
-    globals.setup();
 
     v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
     //TcpStream::initialize(global, isolate, context);
@@ -60,6 +59,58 @@ public:
     loader.execute(isolate, context, entrypath);
 
     IO::get()->run();
+  }
+
+  static void initialize(v8::Local<v8::ObjectTemplate> global, v8::Isolate* isolate) {
+    global->Set(isolate, "print", v8::FunctionTemplate::New(isolate, Runtime::print));
+    global->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
+    global->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
+  }
+
+  static void print(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    if (args.Length() < 1) return;
+    v8::String::Utf8Value str(args.GetIsolate(), args[0]);
+    std::cout << *str;
+  }
+
+  static void env(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    assert(args.Length() == 1);
+    v8::Isolate *isolate = args.GetIsolate();
+
+    if (!args[0]->IsString()) {
+      isolate->ThrowException(v8::String::NewFromUtf8(isolate, "Argument must be a string", v8::NewStringType::kNormal).ToLocalChecked());
+      return;
+    }
+
+    v8::String::Utf8Value str(args.GetIsolate(), args[0]);
+    const char *value = std::getenv(*str);
+
+
+    if (!value) {
+       args.GetReturnValue().Set(v8::Null(isolate));
+       return;
+    }
+
+    return args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, value).ToLocalChecked());
+  }
+
+  static void bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    assert(args.Length() == 1);
+    assert(args[0]->IsString());
+
+    v8::Isolate *isolate = args.GetIsolate();
+    v8::String::Utf8Value str(isolate, args[0]);
+    std::string name = *str;
+
+    v8::Local<v8::Object> obj = v8::Object::New(isolate);
+
+    // TODO: create internal modules registry, create some export macro
+    if (name == "tcp") {
+      TcpStream::initialize(obj, isolate, isolate->GetCurrentContext());
+      TcpServer::initialize(obj, isolate, isolate->GetCurrentContext());
+    }
+
+    args.GetReturnValue().Set(obj);
   }
 };
 
