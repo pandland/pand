@@ -8,6 +8,8 @@
 #include "io.cc"
 #include "tcp.cc"
 
+#define RUNTIME_VERSION "v0.0.0"
+
 namespace fs = std::filesystem;
 namespace runtime {
 
@@ -65,6 +67,10 @@ public:
     runtime_template->Set(isolate, "print", v8::FunctionTemplate::New(isolate, Runtime::print));
     runtime_template->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
     runtime_template->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
+    runtime_template->Set(isolate, "cwd", v8::FunctionTemplate::New(isolate, Runtime::cwd));
+    runtime_template->Set(isolate, "platform", v8_symbol(isolate, Runtime::get_platform().c_str()));
+    runtime_template->Set(isolate, "version", v8_symbol(isolate, RUNTIME_VERSION));
+    runtime_template->Set(isolate, "pid", v8::Number::New(isolate, Runtime::get_pid()));
     global->Set(v8::String::NewFromUtf8(isolate, "Runtime", v8::NewStringType::kNormal).ToLocalChecked(), runtime_template);
   }
 
@@ -74,7 +80,37 @@ public:
     std::cout << *str;
   }
 
-  static void env(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  static int get_pid() {
+    #if defined(_WIN32) || defined(_WIN64)
+        return GetCurrentProcessId();
+    #else
+        return getpid();
+    #endif
+  }
+
+  static void cwd(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    args.GetReturnValue().Set(v8_value(args.GetIsolate(), std::filesystem::current_path()));
+  }
+
+  static std::string get_platform() {
+    #if defined(_WIN32) || defined(_WIN64)
+        return "win32";
+    #elif defined(__APPLE__) || defined(__MACH__)
+        return "darwin";
+    #elif defined(__linux__)
+        return "linux";
+    #elif defined(__FreeBSD__)
+        return "freebsd";
+    #elif defined(__OpenBSD__)
+        return "openbsd";
+    #elif defined(__unix__)
+        return "unix";
+    #else
+        return "unknown";
+    #endif
+  }
+
+  static void env(const v8::FunctionCallbackInfo<v8::Value> &args) {
     assert(args.Length() == 1);
     v8::Isolate *isolate = args.GetIsolate();
 
@@ -85,8 +121,6 @@ public:
 
     v8::String::Utf8Value str(args.GetIsolate(), args[0]);
     const char *value = std::getenv(*str);
-
-
     if (!value) {
        args.GetReturnValue().Set(v8::Null(isolate));
        return;

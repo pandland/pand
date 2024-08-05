@@ -7,7 +7,8 @@ function willThrow() {
 assertThrows(willThrow);
 assert(2 + 2 == 4);
 assertStrictEqual(2, 2);
-console.log(`API_KEY is ${Runtime.env('API_KEY')}`)
+console.log(`Platform is ${Runtime.platform} and pid is: ${Runtime.pid}`);
+console.log(`Cwd is: ${Runtime.cwd()} and runtime version is: ${Runtime.version}`);
 console.log("Hi");
 console.log(import.meta.resolve('./'));
 console.log(`Dirname: ${import.meta.dirname}`)
