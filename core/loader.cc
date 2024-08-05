@@ -78,19 +78,43 @@ namespace runtime
         v8::Local<v8::FixedArray> import_attributes)
     {
       v8::Isolate *isolate = context->GetIsolate();
-      v8::EscapableHandleScope handle_scope(isolate);
       v8::Local<v8::Promise::Resolver> resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
 
-      resolver->Reject(context, v8::Exception::Error(v8::String::NewFromUtf8Literal(isolate, "Module not found"))).Check();
+      v8::String::Utf8Value resource(isolate, resource_name);
+      v8::String::Utf8Value specifier_str(isolate, specifier);
 
-      return handle_scope.Escape(resolver->GetPromise());
+      std::string parent_path(*resource);
+      std::string path = Loader::resolve_module_path(parent_path, *specifier_str);
+
+      v8::MaybeLocal<v8::Module> mod = Loader::create_module(isolate, path);
+      if (mod.IsEmpty()) {
+          resolver->Reject(context, v8::Exception::Error(v8::String::NewFromUtf8Literal(isolate, "Module not found"))).Check();
+      } else {
+          v8::Local<v8::Module> module = mod.ToLocalChecked();
+          if (module->InstantiateModule(context, Loader::load).IsJust()) {
+              v8::Local<v8::Value> val;
+              if (module->Evaluate(context).ToLocal(&val)) {
+                  v8::Local<v8::Value> namespace_obj = module->GetModuleNamespace();
+                  resolver->Resolve(context, namespace_obj).Check();
+                  return resolver->GetPromise();
+              } else {
+                  resolver->Reject(context, v8::Exception::Error(v8::String::NewFromUtf8Literal(isolate, "Error evaluating module"))).Check();
+              }
+          } else {
+              resolver->Reject(context, v8::Exception::Error(v8::String::NewFromUtf8Literal(isolate, "Error instantiating module"))).Check();
+          }
+      }
+
+      return resolver->GetPromise();
     }
 
     static void set_meta(v8::Local<v8::Context> context, v8::Local<v8::Module> module, v8::Local<v8::Object> meta) {
       auto result = absolute_paths.find(module->ScriptId());
       if (result != absolute_paths.end()) {
         v8::Isolate *isolate = context->GetIsolate();
-        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, "file//" + result->second)).Check();
+        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, "file://" + result->second)).Check();
+        meta->Set(context, v8_symbol(isolate, "filename"), v8_value(isolate, result->second)).Check();
+        meta->Set(context, v8_symbol(isolate, "dirname"), v8_value(isolate, fs::path(result->second).parent_path())).Check(); 
       }
     }
 
@@ -105,18 +129,17 @@ namespace runtime
       
       std::string specifier_name(*specifier_utf8);
 
-      auto result = absolute_paths.find(referrer->ScriptId());
-      if (result == absolute_paths.end()) {
+      auto parent_path = absolute_paths.find(referrer->ScriptId());
+      if (parent_path == absolute_paths.end()) {
         printf("error: Unable to find referer's path\n");
         return v8::MaybeLocal<v8::Module>();
       }
-      
-      fs::path referer_path = result->second;
-      fs::path abs_path = referer_path.parent_path() / fs::path(specifier_name);
-      abs_path = abs_path.lexically_normal();
 
-      std::string path = abs_path.string();
+      std::string path = Loader::resolve_module_path(parent_path->second, specifier_name);
+      return create_module(isolate, path);
+    }
 
+    static v8::MaybeLocal<v8::Module> create_module(v8::Isolate *isolate, std::string path) {
       // load from cache:
       auto cached_module = resolve_cache.find(path);
       if (cached_module != resolve_cache.end()) {
@@ -150,6 +173,13 @@ namespace runtime
 
       printf("Error: something went wrong :o\n");
       return v8::MaybeLocal<v8::Module>();
+    }
+
+    static std::string resolve_module_path(fs::path parent, const std::string &specifier) {
+      fs::path abs_path = parent.parent_path() / fs::path(specifier);
+      abs_path = abs_path.lexically_normal();
+
+      return abs_path.string();
     }
 
     static void clear_resolve_cache() {

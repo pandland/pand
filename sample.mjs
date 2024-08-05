@@ -1,6 +1,3 @@
-import { test1 } from './samples/test.mjs';
-import './empty.mjs'
+const { API_KEY } = await import('./empty.mjs');
 
-test1();
-
-export const API_KEY = 'xxxxxxxxxxxxx';
+println(API_KEY);
