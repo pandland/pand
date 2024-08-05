@@ -54,7 +54,7 @@ public:
     v8::Isolate::Scope isolate_scope(isolate);
 
     Loader loader;
-    isolate->SetHostImportModuleDynamicallyCallback(Loader::resolve);
+    isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
     isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
     loader.execute(isolate, context, entrypath);
 

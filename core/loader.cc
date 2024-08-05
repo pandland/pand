@@ -22,6 +22,9 @@ namespace runtime
   class Loader
   {
   public:
+    ~Loader() {
+      Loader::clear_resolve_cache();
+    }
     // path is always supposed to be absolute
     void execute(v8::Isolate *isolate, v8::Local<v8::Context> context, std::string path) {
       std::ifstream file(path);
@@ -43,6 +46,8 @@ namespace runtime
       v8::ScriptCompiler::Source script_source(source, origin);
       v8::Local<v8::Module> mod = v8::ScriptCompiler::CompileModule(isolate, &script_source).ToLocalChecked();
       absolute_paths.emplace(mod->ScriptId(), path);
+      resolve_cache[path].Reset(isolate, mod);
+
       bool intialized = mod->InstantiateModule(context, Loader::load).IsJust();
 
       v8::TryCatch try_catch(isolate);
@@ -85,7 +90,7 @@ namespace runtime
       auto result = absolute_paths.find(module->ScriptId());
       if (result != absolute_paths.end()) {
         v8::Isolate *isolate = context->GetIsolate();
-        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, result->second)).Check();
+        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, "file//" + result->second)).Check();
       }
     }
 
@@ -112,6 +117,12 @@ namespace runtime
 
       std::string path = abs_path.string();
 
+      // load from cache:
+      auto cached_module = resolve_cache.find(path);
+      if (cached_module != resolve_cache.end()) {
+        return cached_module->second.Get(isolate);
+      }
+
       std::ifstream file(path);
       std::stringstream buffer;
       buffer << file.rdbuf();
@@ -133,11 +144,19 @@ namespace runtime
       
       if (v8::ScriptCompiler::CompileModule(isolate, &script_source).ToLocal(&module)) {
         absolute_paths.emplace(module->ScriptId(), path);
+        resolve_cache[path].Reset(isolate, module);
         return module;
       }
 
       printf("Error: something went wrong :o\n");
       return v8::MaybeLocal<v8::Module>();
+    }
+
+    static void clear_resolve_cache() {
+      for (auto& entry : resolve_cache) {
+        entry.second.Reset();
+      }
+      resolve_cache.clear();
     }
   };
 }
