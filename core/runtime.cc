@@ -35,7 +35,7 @@ public:
     delete this->create_params.array_buffer_allocator;
   }
 
-  void start(const char *entryfile) {
+  void start(const char *entryfile, int argc, char* argv[]) {
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
@@ -43,15 +43,20 @@ public:
     IO::create();
     lx_io_t *ctx = IO::get()->ctx;
 
-    Runtime::initialize(global, isolate);
+    v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
+    Runtime::initialize(runtime_template, isolate);
+    global->Set(v8_symbol(isolate, "Runtime"), runtime_template);
+
     Timers::initialize(ctx);
     Timers::instance()->setup(global, isolate);
 
     v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
-    //TcpStream::initialize(global, isolate, context);
-
     v8::Context::Scope context_scope(context);
     v8::Isolate::Scope isolate_scope(isolate);
+
+    v8::Local<v8::Object> runtime_obj = context->Global()->Get(context, v8_symbol(isolate, "Runtime")).ToLocalChecked().As<v8::Object>();
+    runtime_obj->Set(context, v8_symbol(isolate, "argv"), init_argv(argc, argv, isolate, context)).Check();
+    //TcpStream::initialize(global, isolate, context);
 
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
@@ -62,8 +67,7 @@ public:
     IO::get()->run();
   }
 
-  static void initialize(v8::Local<v8::ObjectTemplate> global, v8::Isolate* isolate) {
-    v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
+  static void initialize(v8::Local<v8::ObjectTemplate> runtime_template, v8::Isolate* isolate) {
     runtime_template->Set(isolate, "print", v8::FunctionTemplate::New(isolate, Runtime::print));
     runtime_template->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
     runtime_template->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
@@ -71,7 +75,16 @@ public:
     runtime_template->Set(isolate, "platform", v8_symbol(isolate, Runtime::get_platform().c_str()));
     runtime_template->Set(isolate, "version", v8_symbol(isolate, RUNTIME_VERSION));
     runtime_template->Set(isolate, "pid", v8::Number::New(isolate, Runtime::get_pid()));
-    global->Set(v8::String::NewFromUtf8(isolate, "Runtime", v8::NewStringType::kNormal).ToLocalChecked(), runtime_template);
+  }
+
+  static v8::Local<v8::Array> init_argv(int argc, char* argv[], v8::Isolate* isolate, v8::Local<v8::Context> context) {
+    v8::Local<v8::Array> js_argv = v8::Array::New(isolate, argc);
+    for (int i = 0; i < argc; ++i) {
+        v8::Local<v8::String> arg = v8::String::NewFromUtf8(isolate, argv[i], v8::NewStringType::kNormal).ToLocalChecked();
+        js_argv->Set(context, i, arg).FromJust();
+    }
+
+    return js_argv;
   }
 
   static void print(const v8::FunctionCallbackInfo<v8::Value>& args) {

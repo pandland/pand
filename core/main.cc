@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 
     char *filename = argv[1];
     runtime::Runtime app;
-    app.start(filename);
+    app.start(filename, argc, argv);
     
     return 0;
 }

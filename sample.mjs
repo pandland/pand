@@ -4,6 +4,10 @@ function willThrow() {
   throw new Error("Some error");
 }
 
+Runtime.argv.forEach(item => {
+  console.log(`Arg: ${item}`);
+});
+
 assertThrows(willThrow);
 assert(2 + 2 == 4);
 assertStrictEqual(2, 2);
