@@ -69,6 +69,32 @@ namespace runtime
       }
     }
 
+    // implementation for import.meta.resolve()
+    static void resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
+      v8::Local<v8::Object> meta = args.Holder();
+      v8::Isolate *isolate = args.GetIsolate();
+      v8::MaybeLocal<v8::Value> parent = meta->Get(isolate->GetCurrentContext(), v8_symbol(isolate, "filename"));
+      if (parent.IsEmpty()) {
+        isolate->ThrowException(v8::Exception::ReferenceError(v8::String::NewFromUtf8(isolate, "Unable to get import.meta.dirname").ToLocalChecked()));
+      }
+      
+      v8::Local<v8::Value> path_to_resolve = args[0];
+      if (!path_to_resolve->IsString()) {
+        isolate->ThrowException(v8::Exception::TypeError(v8::String::NewFromUtf8(isolate, "Resolve path must be a string").ToLocalChecked()));
+      }
+
+      v8::String::Utf8Value parent_path(isolate, parent.ToLocalChecked());
+      v8::String::Utf8Value path(isolate, path_to_resolve);
+      
+      std::string path_std(*path);
+      if (!path_std.starts_with("/") && !path_std.starts_with("./") && !path_std.starts_with("../")) {
+        isolate->ThrowException(v8::Exception::TypeError(v8::String::NewFromUtf8(isolate, "Resolve path must be prefixed with / or ./ or ../").ToLocalChecked()));
+      }
+
+      std::string abs_path = Loader::resolve_module_path(fs::path(*parent_path), *path);
+      args.GetReturnValue().Set(v8_value(isolate, "file://" + abs_path));
+    }
+
     // Not implemented yet!
     static v8::MaybeLocal<v8::Promise> dynamic_load(
         v8::Local<v8::Context> context,
@@ -114,7 +140,8 @@ namespace runtime
         v8::Isolate *isolate = context->GetIsolate();
         meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, "file://" + result->second)).Check();
         meta->Set(context, v8_symbol(isolate, "filename"), v8_value(isolate, result->second)).Check();
-        meta->Set(context, v8_symbol(isolate, "dirname"), v8_value(isolate, fs::path(result->second).parent_path())).Check(); 
+        meta->Set(context, v8_symbol(isolate, "dirname"), v8_value(isolate, fs::path(result->second).parent_path())).Check();
+        meta->Set(context, v8_symbol(isolate, "resolve"), v8::Function::New(context, resolve).ToLocalChecked()).Check(); 
       }
     }
 
