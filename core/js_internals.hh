@@ -6,7 +6,8 @@
 #include <string>
 
 std::unordered_map<std::string, std::string> js_internals = {
-    {"bootstrap", "// TODO init environtment"}
+    {"std:assert", "export function assert(condition, message) {\n  if (!condition) {\n      throw new Error(message || \"Assertion failed\");\n  }\n}\n"},
+    {"std:bootstrap", "console.log = println;\nconsole.error = println;\n"}
 };
 
 #endif // JS_MODULES_H

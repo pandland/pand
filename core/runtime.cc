@@ -56,6 +56,7 @@ public:
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
     isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
+    loader.execute(isolate, context, "std:bootstrap");
     loader.execute(isolate, context, entrypath);
 
     lx_run(ctx);

@@ -1,6 +1,8 @@
-const { API_KEY } = await import('./empty.mjs');
+import { assert } from 'std:assert';
 
-println(import.meta.resolve('../'));
-println(`Dirname: ${import.meta.dirname}`)
-println(`Filename: ${import.meta.filename}`);
-println(`Url: ${import.meta.url}`);
+assert(2 + 2 == 4);
+console.log("Hi");
+console.log(import.meta.resolve('./'));
+console.log(`Dirname: ${import.meta.dirname}`)
+console.log(`Filename: ${import.meta.filename}`);
+console.log(`Url: ${import.meta.url}`);

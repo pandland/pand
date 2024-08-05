@@ -1,1 +1,2 @@
-// TODO init environtment
+console.log = println;
+console.error = println;

@@ -23,7 +23,7 @@ def generate_cpp_header(folder_path, output_file):
                     f.write(",\n")
                 first = False
                 
-                f.write(f'    {{"{module_name}", "{source_code}"}}')
+                f.write(f'    {{"std:{module_name}", "{source_code}"}}')
         
         f.write("\n};\n\n")
         f.write(f"#endif // {header_guard}\n")

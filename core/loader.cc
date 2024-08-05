@@ -8,11 +8,15 @@
 #include <unordered_map>
 
 #include <assert.h>
+#include "js_internals.hh"
 #include <v8.h>
 #include "v8_utils.cc"
-#include "js_internals.hh"
 
 namespace fs = std::filesystem;
+
+// in release build, internal modules will be bundled directly in the C++ code
+#define INTERNALS_DIR "./js"
+#define RESERVED_PREFIX "std:" // import { dirname } from 'std:path'
 
 namespace runtime
 {
@@ -27,10 +31,7 @@ namespace runtime
     }
     // path is always supposed to be absolute
     void execute(v8::Isolate *isolate, v8::Local<v8::Context> context, std::string path) {
-      std::ifstream file(path);
-      std::stringstream buffer;
-      buffer << file.rdbuf();
-      std::string src = buffer.str();
+      std::string src = load_file(path);
 
       v8::Local<v8::String> source = v8_value(isolate, src);
       v8::ScriptOrigin origin(v8_value(isolate, path),
@@ -95,7 +96,6 @@ namespace runtime
       args.GetReturnValue().Set(v8_value(isolate, "file://" + abs_path));
     }
 
-    // Not implemented yet!
     static v8::MaybeLocal<v8::Promise> dynamic_load(
         v8::Local<v8::Context> context,
         v8::Local<v8::Data> host_defined_options,
@@ -156,6 +156,10 @@ namespace runtime
       
       std::string specifier_name(*specifier_utf8);
 
+      if (is_internal(specifier_name)) {
+        return create_module(isolate, specifier_name);
+      }
+
       auto parent_path = absolute_paths.find(referrer->ScriptId());
       if (parent_path == absolute_paths.end()) {
         printf("error: Unable to find referer's path\n");
@@ -172,11 +176,8 @@ namespace runtime
       if (cached_module != resolve_cache.end()) {
         return cached_module->second.Get(isolate);
       }
-
-      std::ifstream file(path);
-      std::stringstream buffer;
-      buffer << file.rdbuf();
-      std::string src = buffer.str();
+    
+      std::string src = load_file(path);
 
       v8::Local<v8::String> source = v8_value(isolate, src);
       v8::ScriptOrigin origin(v8_value(isolate, path),
@@ -207,6 +208,27 @@ namespace runtime
       abs_path = abs_path.lexically_normal();
 
       return abs_path.string();
+    }
+
+    static inline bool is_internal(std::string specifier) {
+      return specifier.starts_with(RESERVED_PREFIX);
+    }
+
+    static std::string load_file(std::string path) {
+      if (is_internal(path)) {
+        auto internal_src = js_internals.find(path);
+        if (internal_src == js_internals.end()) {
+          printf("Invalid std module name\n");
+          exit(1);
+        }
+
+        return internal_src->second;
+      }
+      
+      std::ifstream file(path);
+      std::stringstream buffer;
+      buffer << file.rdbuf();
+      return buffer.str();
     }
 
     static void clear_resolve_cache() {
