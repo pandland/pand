@@ -59,7 +59,7 @@ public:
     loader.execute(isolate, context, "std:bootstrap");
     loader.execute(isolate, context, entrypath);
 
-    lx_run(ctx);
+    IO::get()->run();
   }
 };
 

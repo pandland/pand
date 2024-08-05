@@ -23,6 +23,10 @@ public:
   static IO *get() {
     return IO::instance_;
   }
+
+  inline void run() {
+    lx_run(this->ctx);
+  }
 };
 
 IO *IO::instance_ = nullptr;
