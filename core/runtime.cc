@@ -38,7 +38,6 @@ public:
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     std::string entrypath = fs::absolute(entryfile).string();
-    global->Set(isolate, "__entryfile", v8::String::NewFromUtf8(isolate, entrypath.c_str()).ToLocalChecked());
     IO::create();
     lx_io_t *ctx = IO::get()->ctx;
 
@@ -62,9 +61,11 @@ public:
   }
 
   static void initialize(v8::Local<v8::ObjectTemplate> global, v8::Isolate* isolate) {
-    global->Set(isolate, "print", v8::FunctionTemplate::New(isolate, Runtime::print));
-    global->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
-    global->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
+    v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
+    runtime_template->Set(isolate, "print", v8::FunctionTemplate::New(isolate, Runtime::print));
+    runtime_template->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
+    runtime_template->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
+    global->Set(v8::String::NewFromUtf8(isolate, "Runtime", v8::NewStringType::kNormal).ToLocalChecked(), runtime_template);
   }
 
   static void print(const v8::FunctionCallbackInfo<v8::Value>& args) {

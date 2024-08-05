@@ -1,2 +1,2 @@
-console.log = (arg) => { print(`${arg}\n`); }
-console.error = (arg) => { print(`${arg}\n`); }
+console.log = (arg) => { Runtime.print(`${arg}\n`); }
+console.error = (arg) => { Runtime.print(`${arg}\n`); }
