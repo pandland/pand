@@ -14,8 +14,16 @@ Once I will figure out how things work together - I will rewrite this project.
 - [x] Clunky TCP support
 - [x] Basic support for ES6 imports
 
-I try to support TypeScript from the beginning - currently every TS file is stripped to JS (and enums are not supported).
+> Current state example:
 
-![image](https://github.com/user-attachments/assets/c1e97b8e-997b-4794-acbd-76f22924910f)
+```js
+import { assert } from 'std:assert';
 
-> Executing sample.ts code
+assert(2 + 2 == 4);
+console.log("Hi");
+console.log(import.meta.resolve('./'));
+console.log(`Dirname: ${import.meta.dirname}`)
+console.log(`Filename: ${import.meta.filename}`);
+console.log(`Url: ${import.meta.url}`);
+```
+
