@@ -8,10 +8,38 @@
 #include "io.cc"
 #include "tcp.cc"
 
+#include <thread>
+#include <chrono>
+
 #define RUNTIME_VERSION "v0.0.0"
 
 namespace fs = std::filesystem;
 namespace runtime {
+
+
+void PrintMemoryUsage(v8::Isolate* isolate) {
+    v8::HeapStatistics heap_stats;
+    isolate->GetHeapStatistics(&heap_stats);
+    std::cout << "--------------------------------------------------------\n";
+    std::cout << "Total heap size: " << heap_stats.total_heap_size() << " bytes\n";
+    std::cout << "Total heap size executable: " << heap_stats.total_heap_size_executable() << " bytes\n";
+    std::cout << "Total physical size: " << heap_stats.total_physical_size() << " bytes\n";
+    std::cout << "Total available size: " << heap_stats.total_available_size() << " bytes\n";
+    std::cout << "Used heap size: " << heap_stats.used_heap_size() << " bytes\n";
+    std::cout << "Heap size limit: " << heap_stats.heap_size_limit() << " bytes\n";
+    std::cout << "Malloced memory: " << heap_stats.malloced_memory() << " bytes\n";
+    std::cout << "Peak malloced memory: " << heap_stats.peak_malloced_memory() << " bytes\n";
+    std::cout << "Number of native contexts: " << heap_stats.number_of_native_contexts() << "\n";
+    std::cout << "Number of detached contexts: " << heap_stats.number_of_detached_contexts() << "\n";
+    std::cout << "--------------------------------------------------------\n";
+}
+
+void MonitorMemoryUsage(v8::Isolate* isolate) {
+    while (true) {
+        PrintMemoryUsage(isolate);
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
+}
 
 /* entrypoint class for JS runtime */
 class Runtime {
@@ -62,6 +90,9 @@ public:
     isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
     loader.execute(isolate, context, "std:bootstrap");
     loader.execute(isolate, context, entrypath);
+
+    std::thread memory_monitor(MonitorMemoryUsage, isolate);
+    memory_monitor.detach();
 
     IO::get()->run();
   }

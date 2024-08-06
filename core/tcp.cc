@@ -18,6 +18,9 @@ public:
   TcpStream(v8::Isolate *isolate, v8::Local<v8::Object> obj) {
     this->obj.Reset(isolate, obj);
   }
+  ~TcpStream() {
+    this->obj.Reset();
+  }
 
   static v8::Persistent<v8::Function> streamConstructor;
 
@@ -25,9 +28,6 @@ public:
     v8::Local<v8::FunctionTemplate> t = v8::FunctionTemplate::New(isolate, TcpStream::constructor);
     t->SetClassName(v8::String::NewFromUtf8(isolate, "TcpStream").ToLocalChecked());
     t->InstanceTemplate()->SetInternalFieldCount(1);
-
-    v8::Local<v8::FunctionTemplate> readTemplate = v8::FunctionTemplate::New(isolate, TcpStream::read);
-    t->PrototypeTemplate()->Set(isolate, "read", readTemplate);
 
     v8::Local<v8::FunctionTemplate> writeTemplate = v8::FunctionTemplate::New(isolate, TcpStream::write);
     t->PrototypeTemplate()->Set(isolate, "write", writeTemplate);
@@ -44,25 +44,20 @@ public:
   static void constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
     assert(args.IsConstructCall());
     v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
     TcpStream *stream = new TcpStream(isolate, args.This());
     args.This()->SetAlignedPointerInInternalField(0, stream);
-  }
-
-  static void read(const v8::FunctionCallbackInfo<v8::Value> &args) {
-    assert(args.Length() == 1);
-    v8::Local<v8::Function> callback = args[0].As<v8::Function>();
-
-    TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
-    //stream->read_callback.Reset(v8::Isolate::GetCurrent(), callback);
   }
 
   static void write(const v8::FunctionCallbackInfo<v8::Value> &args) {
     assert(args.Length() == 1);
     
-    v8::String::Utf8Value str(args.GetIsolate(), args[0]);
+    v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
+
+    v8::String::Utf8Value str(isolate, args[0]);
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
-    char *buf = (char*)malloc(sizeof(char) * str.length());
-    strcpy(buf, *str);
+    char *buf = strdup(*str);
 
     lx_write_t *write_op = lx_write_alloc(buf, str.length());
     lx_write(write_op, stream->conn, TcpStream::handle_write);
@@ -85,6 +80,7 @@ public:
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
     
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     v8::Local<v8::Function> callback =
@@ -106,14 +102,13 @@ public:
 
   static void handle_close(lx_connection_t *conn) {
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
     v8::Local<v8::Function> callback =
       stream->obj.Get(isolate)->Get(context, v8_symbol(isolate, "onclose")).ToLocalChecked().As<v8::Function>();
-
     callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
-    stream->obj.Reset();
     delete stream;
   }
 };
@@ -133,6 +128,7 @@ public:
     assert(args.Length() == 2);
     
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     v8::Local<v8::Function> callback = args[0].As<v8::Function>();
@@ -149,6 +145,7 @@ public:
   static void handle_accept(lx_connection_t *conn) {
     TcpServer *server = static_cast<TcpServer*>(conn->listener->data);
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handle_scope(isolate);
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Local<v8::Function> callback = server->callback.Get(isolate);

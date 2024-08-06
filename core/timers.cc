@@ -86,6 +86,7 @@ public:
   static void handle_timer(lx_timer_t *handle) {
     TimerWrap *timer = static_cast<TimerWrap*>(handle->data);
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     if (isolate->IsDead()) {
@@ -116,6 +117,7 @@ public:
     /* JavaScript bindings */
   static void JS_setTimeout(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     int64_t timeout = args[1]->IntegerValue(context).ToChecked();
@@ -128,6 +130,7 @@ public:
 
   static void JS_setInterval(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     int64_t interval = args[1]->IntegerValue(context).ToChecked();
@@ -140,6 +143,7 @@ public:
 
   static void JS_clearTimer(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     int64_t id = args[0]->IntegerValue(context).ToChecked();
