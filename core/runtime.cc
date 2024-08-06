@@ -56,7 +56,6 @@ public:
 
     v8::Local<v8::Object> runtime_obj = context->Global()->Get(context, v8_symbol(isolate, "Runtime")).ToLocalChecked().As<v8::Object>();
     runtime_obj->Set(context, v8_symbol(isolate, "argv"), init_argv(argc, argv, isolate, context)).Check();
-    //TcpStream::initialize(global, isolate, context);
 
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
@@ -72,7 +71,8 @@ public:
     runtime_template->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
     runtime_template->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
     runtime_template->Set(isolate, "cwd", v8::FunctionTemplate::New(isolate, Runtime::cwd));
-    runtime_template->Set(isolate, "platform", v8_symbol(isolate, Runtime::get_platform().c_str()));
+    runtime_template->Set(isolate, "exit", v8::FunctionTemplate::New(isolate, Runtime::exit_process));
+    runtime_template->Set(isolate, "platform", v8_symbol(isolate, Runtime::get_platform()));
     runtime_template->Set(isolate, "version", v8_symbol(isolate, RUNTIME_VERSION));
     runtime_template->Set(isolate, "pid", v8::Number::New(isolate, Runtime::get_pid()));
   }
@@ -105,7 +105,15 @@ public:
     args.GetReturnValue().Set(v8_value(args.GetIsolate(), std::filesystem::current_path()));
   }
 
-  static std::string get_platform() {
+  static void exit_process(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    int status = 0;
+    if (args.Length() == 1 && args[0]->IsNumber()) {
+      status = args[0].As<v8::Number>()->Int32Value(args.GetIsolate()->GetCurrentContext()).ToChecked();
+    }
+    exit(status);
+  }
+
+  static const char *get_platform() {
     #if defined(_WIN32) || defined(_WIN64)
         return "win32";
     #elif defined(__APPLE__) || defined(__MACH__)
