@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LIBS_DIR="./libs"
+LIBS_DIR="./deps"
 
 V8_DIR="$LIBS_DIR/v8"
 INCLUDE_DIR="$V8_DIR/include"

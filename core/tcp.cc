@@ -6,13 +6,18 @@
 
 #include <string.h>
 #include "io.cc"
+#include "v8_utils.cc"
 
 namespace runtime {
 
 class TcpStream {
 public:
   lx_connection_t *conn;
-  v8::Global<v8::Function> read_callback;
+  v8::Persistent<v8::Object> obj;
+
+  TcpStream(v8::Isolate *isolate, v8::Local<v8::Object> obj) {
+    this->obj.Reset(isolate, obj);
+  }
 
   static v8::Persistent<v8::Function> streamConstructor;
 
@@ -38,8 +43,8 @@ public:
 
   static void constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
     assert(args.IsConstructCall());
-
-    TcpStream *stream = new TcpStream;
+    v8::Isolate *isolate = args.GetIsolate();
+    TcpStream *stream = new TcpStream(isolate, args.This());
     args.This()->SetAlignedPointerInInternalField(0, stream);
   }
 
@@ -48,7 +53,7 @@ public:
     v8::Local<v8::Function> callback = args[0].As<v8::Function>();
 
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
-    stream->read_callback.Reset(v8::Isolate::GetCurrent(), callback);
+    //stream->read_callback.Reset(v8::Isolate::GetCurrent(), callback);
   }
 
   static void write(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -82,8 +87,8 @@ public:
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-    v8::Local<v8::Function> callback = stream->read_callback.Get(isolate);
-
+    v8::Local<v8::Function> callback =
+      stream->obj.Get(isolate)->Get(context, v8_symbol(isolate, "onread")).ToLocalChecked().As<v8::Function>();
     if (callback.IsEmpty()) {
       return;
     }
@@ -100,8 +105,15 @@ public:
   }
 
   static void handle_close(lx_connection_t *conn) {
+    v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
-    stream->read_callback.Reset();
+    v8::Local<v8::Function> callback =
+      stream->obj.Get(isolate)->Get(context, v8_symbol(isolate, "onclose")).ToLocalChecked().As<v8::Function>();
+
+    callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
+    stream->obj.Reset();
     delete stream;
   }
 };

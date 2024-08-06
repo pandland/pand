@@ -68,6 +68,7 @@ public:
 
   static void initialize(v8::Local<v8::ObjectTemplate> runtime_template, v8::Isolate* isolate) {
     runtime_template->Set(isolate, "print", v8::FunctionTemplate::New(isolate, Runtime::print));
+    runtime_template->Set(isolate, "printerr", v8::FunctionTemplate::New(isolate, Runtime::printerr));
     runtime_template->Set(isolate, "env", v8::FunctionTemplate::New(isolate, Runtime::env));
     runtime_template->Set(isolate, "bind", v8::FunctionTemplate::New(isolate, Runtime::bind));
     runtime_template->Set(isolate, "cwd", v8::FunctionTemplate::New(isolate, Runtime::cwd));
@@ -91,6 +92,12 @@ public:
     if (args.Length() < 1) return;
     v8::String::Utf8Value str(args.GetIsolate(), args[0]);
     std::cout << *str;
+  }
+
+  static void printerr(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    if (args.Length() < 1) return;
+    v8::String::Utf8Value str(args.GetIsolate(), args[0]);
+    std::cerr << *str;
   }
 
   static int get_pid() {
