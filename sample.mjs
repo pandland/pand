@@ -1,4 +1,5 @@
 import { assert, assertStrictEqual, assertThrows } from 'std:assert';
+import { tcpListen } from 'std:net';
 
 function willThrow() {
   throw new Error("Some error");
@@ -20,4 +21,14 @@ console.log(`Dirname: ${import.meta.dirname}`)
 console.log(`Filename: ${import.meta.filename}`);
 console.log(`Url: ${import.meta.url}`);
 
-Runtime.exit(0);
+tcpListen((socket) => {
+  console.log("Client connected");
+
+  socket.read((chunk) => {
+    console.log(`Received data`);
+    const response = `<h1>${chunk}</h1>`; // echo HTTP request
+    socket.write(`HTTP/1.1 200 OK\r\nContent-Length: ${response.length}\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n`);
+    socket.write(response);
+    socket.close();
+  });
+}, 8000);
