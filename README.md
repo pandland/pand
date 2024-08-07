@@ -5,6 +5,15 @@
 
 <h1 align="center">PandJS</h1>
 
+<div align="center">
+  <a href="https://github.com/michaldziuba03/pand/tree/main/docs">Documentation</a>
+  <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+  <a href="https://michaldziuba03.github.io/pand/">Website</a>
+  <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+  <a href="https://github.com/michaldziuba03/pand/issues/new">Issues</a>
+  <br />
+</div>
+
 > ⚠️ Early stage of development.
 
 My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++. Very unstable as I learn how things work together.
