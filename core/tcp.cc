@@ -13,11 +13,15 @@ namespace runtime {
 class TcpStream {
 public:
   lx_connection_t *conn;
+  lx_timer_t timeout;
   v8::Persistent<v8::Object> obj;
 
   TcpStream(v8::Isolate *isolate, v8::Local<v8::Object> obj) {
     this->obj.Reset(isolate, obj);
+    lx_timer_init(IO::get()->ctx, &this->timeout);
+    this->timeout.data = this;
   }
+
   ~TcpStream() {
     this->obj.Reset();
   }
@@ -106,10 +110,16 @@ public:
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
+    lx_timer_stop(&stream->timeout);
     v8::Local<v8::Function> callback =
       stream->obj.Get(isolate)->Get(context, v8_symbol(isolate, "onclose")).ToLocalChecked().As<v8::Function>();
     callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
     delete stream;
+  }
+
+  static void handle_timeout(lx_timer_t *timer) {
+    TcpStream *stream = static_cast<TcpStream*>(timer->data);
+    lx_close(stream->conn);
   }
 };
 
@@ -118,6 +128,8 @@ v8::Persistent<v8::Function> TcpStream::streamConstructor;
 class TcpServer {
   v8::Global<v8::Function> callback;
   int port;
+
+  static const int64_t kDefaultTimeout = 5 * 1000;
 public:
   static void initialize(v8::Local<v8::Object> exports, v8::Isolate *isolate, v8::Local<v8::Context> context)  {
     v8::Local<v8::Function> func = v8::FunctionTemplate::New(isolate, listen)->GetFunction(context).ToLocalChecked();
@@ -159,6 +171,7 @@ public:
     v8::Local<v8::Object> tcpStreamWrap = cons->NewInstance(context).ToLocalChecked();
     TcpStream *stream = static_cast<TcpStream*>(tcpStreamWrap->GetAlignedPointerFromInternalField(0));
     stream->conn = conn;
+    lx_timer_start(&stream->timeout, TcpStream::handle_timeout, TcpServer::kDefaultTimeout);
     conn->data = (void*)stream;
     conn->onclose = TcpStream::handle_close;
     conn->ondata = TcpStream::handle_data;
