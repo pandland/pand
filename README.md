@@ -43,8 +43,6 @@ assertStrictEqual(2, 2);
 
 console.log(`Platform is ${Runtime.platform} and pid is: ${Runtime.pid}`);
 console.log(`Cwd is: ${Runtime.cwd()} and runtime version is: ${Runtime.version}`);
-console.log("Hi");
-console.log(import.meta.resolve('./'));
 console.log(`Dirname: ${import.meta.dirname}`)
 console.log(`Filename: ${import.meta.filename}`);
 console.log(`Url: ${import.meta.url}`);
@@ -52,14 +50,15 @@ console.log(`Url: ${import.meta.url}`);
 tcpListen((socket) => {
   console.log("Client connected");
 
+  setTimeout(() => {
+    socket.close();
+  }, 5 * 1000);
+
   socket.read((chunk) => {
     console.log(`Received data`);
     const response = `<h1>${chunk}</h1>`; // echo HTTP request
     socket.write(`HTTP/1.1 200 OK\r\nContent-Length: ${response.length}\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n`);
     socket.write(response);
-    socket.close();
   });
 }, 8000);
-
 ```
-
