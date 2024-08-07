@@ -36,7 +36,7 @@ Runtime.argv.forEach(item => {
 });
 
 // output:
-Arg: done
+Arg: pand
 Arg: ./your-script.js
 Arg: arg1
 Arg arg2
