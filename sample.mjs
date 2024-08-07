@@ -1,5 +1,8 @@
 import { assert, assertStrictEqual, assertThrows } from 'std:assert';
 import { tcpListen } from 'std:net';
+import path from 'std:path';
+
+console.log(path.basename(import.meta.filename));
 
 function willThrow() {
   throw new Error("Some error");

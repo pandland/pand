@@ -8,7 +8,7 @@ def generate_cpp_header(folder_path, output_file):
         f.write(f"#define {header_guard}\n\n")
         f.write("#include <unordered_map>\n")
         f.write("#include <string>\n\n")
-        f.write("std::unordered_map<std::string, std::string> js_internals = {\n")
+        f.write("std::unordered_map<std::string, std::vector<unsigned char>> js_internals = {\n")
         
         first = True
         for file_name in os.listdir(folder_path):
@@ -16,14 +16,15 @@ def generate_cpp_header(folder_path, output_file):
                 module_name = os.path.splitext(file_name)[0]
                 file_path = os.path.join(folder_path, file_name)
                 
-                with open(file_path, 'r', encoding='utf-8') as js_file:
-                    source_code = js_file.read().replace('\n', '\\n').replace('"', '\\"')
+                with open(file_path, 'rb') as js_file:  # Open file in binary mode
+                    byte_content = js_file.read()
+                    hex_content = ', '.join(f'0x{byte:02x}' for byte in byte_content)
                 
                 if not first:
                     f.write(",\n")
                 first = False
                 
-                f.write(f'    {{"std:{module_name}", "{source_code}"}}')
+                f.write(f'    {{"std:{module_name}", {{ {hex_content} }}}}')
         
         f.write("\n};\n\n")
         f.write(f"#endif // {header_guard}\n")

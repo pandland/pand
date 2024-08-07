@@ -73,24 +73,22 @@
     }
 
     .console {
+      --console-max: 460px;
+      --console-padding-x: 24px;
       font-family: "Roboto Mono", monospace;
-      text-overflow: ellipsis;
-      justify-content: flex-end;
-      overflow: auto;
-      white-space: nowrap;
+      position: relative;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 24px;
       font-size: 14px;
       font-weight: 600;
       background-color: #011418;
-      padding: 8px 24px;
+      padding: 8px var(--console-padding-x);
       color: #ECEFF4;
       border-radius: 10px;
       min-height: 48px;
       width: 100%;
-      max-width: 460px;
+      max-width: var(--console-max);
     }
 
     .links {
@@ -114,16 +112,17 @@
     }
 
     .copy {
+      position: absolute;
+      right: var(--console-padding-x);
       cursor: pointer;
       padding: 10px;
       border-radius: 4px;
-      height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
       color: #ECEFF4;
       border: none;
-      background-color: transparent;
+      background-color: #011418;
       border: 1px solid transparent;
       transition: background-color .1s ease-in-out;
       transition: border .1s ease-in-out;
@@ -132,6 +131,16 @@
     .copy:hover {
       background-color: #05252C;
       border: 1px solid #2D4655;
+    }
+
+    .command {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .command .highlight {
+      color: #ebcb8b;
     }
 
     @media (max-width: 610px) {
@@ -172,7 +181,9 @@
 
   <div class="console-wrapper">
     <div class="console">
-      <span>curl -o- not-ready-yet | sh</span>
+      <span class="command">
+        <span class="highlight">curl</span> -o- not-ready-yet | <span class="highlight">sh</span>
+      </span>
       <button class="copy">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
       </button>
@@ -180,9 +191,9 @@
   </div>
 
   <div class="links">
-    <a href="https://github.com/michaldziuba03/pand/tree/main/docs">Docs</a>
-    <a href="#">About</a>
-    <a href="https://github.com/michaldziuba03/pand">GitHub</a>
+    <a target="_blank" href="https://github.com/michaldziuba03/pand/tree/main/docs">Docs</a>
+    <a target="_blank" href="#">About</a>
+    <a target="_blank" href="https://github.com/michaldziuba03/pand">GitHub</a>
   </div>
 </body>
 </html>

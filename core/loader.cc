@@ -222,7 +222,7 @@ namespace runtime
           exit(1);
         }
 
-        return internal_src->second;
+        return std::string(internal_src->second.begin(), internal_src->second.end());
       }
       
       std::ifstream file(path);
