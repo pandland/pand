@@ -18,11 +18,31 @@ class Socket {
     // otherwise - ignore and make it safe to call multiple times
   }
 
+  setTimeout(delay) {
+    if (this._handle) {
+      this._handle.setTimeout(delay);
+    }
+  }
+
   write(data) {
     if (this._handle) {
       this._handle.write(data);
     }
   }
+}
+
+function toPort(value) {
+  const port = Number(value);
+  
+  if (!Number.isInteger(port)) {
+      throw new Error('Port must be an integer.');
+  }
+
+  if (port < 0 || port > 65535) {
+      throw new Error('Port must be in the range 0-65535.');
+  }
+  
+  return port;
 }
 
 export const tcpListen = (callback, port) => {
@@ -34,5 +54,5 @@ export const tcpListen = (callback, port) => {
     handle.onread = (chunk) => {} // user should call socket.read() to overwrite this callback
     
     callback(socket);
-  }, port);
+  }, toPort(port));
 };

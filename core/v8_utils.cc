@@ -10,6 +10,16 @@ inline v8::Local<v8::String> v8_value(v8::Isolate *isolate, const std::string &s
     return maybe_str.ToLocalChecked();
 }
 
+/* use it if v8::String is required explicitly */
+inline v8::Local<v8::String> v8_str(v8::Isolate *isolate, const std::string &str) {
+    v8::MaybeLocal<v8::String> maybe_str = v8::String::NewFromUtf8(isolate, str.c_str(), v8::NewStringType::kNormal);
+    if (maybe_str.IsEmpty()) {
+        return v8::String::Empty(isolate);
+    }
+
+    return maybe_str.ToLocalChecked();
+}
+
 inline v8::Local<v8::Number> v8_value(v8::Isolate *isolate, double value) {
   return v8::Number::New(isolate, value);  
 }

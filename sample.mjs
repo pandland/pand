@@ -27,6 +27,7 @@ console.log(`Url: ${import.meta.url}`);
 tcpListen((socket) => {
   console.log("Client connected");
 
+  socket.setTimeout(60 * 1000);
   socket.read((chunk) => {
     console.log(`Received data`);
     const response = `<h1>${chunk}</h1>`; // echo HTTP request

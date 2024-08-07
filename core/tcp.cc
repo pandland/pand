@@ -38,6 +38,9 @@ public:
 
     v8::Local<v8::FunctionTemplate> closeTemplate = v8::FunctionTemplate::New(isolate, TcpStream::close);
     t->PrototypeTemplate()->Set(isolate, "close", closeTemplate);
+
+    v8::Local<v8::FunctionTemplate> setTimeoutTemplate = v8::FunctionTemplate::New(isolate, TcpStream::set_timeout);
+    t->PrototypeTemplate()->Set(isolate, "setTimeout", setTimeoutTemplate);
     
     v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
     TcpStream::streamConstructor.Reset(isolate, func);
@@ -77,6 +80,21 @@ public:
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
 
     lx_close(stream->conn);
+  }
+
+  static void set_timeout(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    v8::Isolate *isolate = args.GetIsolate();
+    
+    if (args.Length() != 1 && !args[0]->IsNumber()) {
+      isolate->ThrowException(v8::Exception::Error(v8_str(isolate, "Expected timeout as number")));
+      return;
+    }
+
+    int64_t timeout = args[0].As<v8::Number>()->Value();
+    TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
+    
+    lx_timer_stop(&stream->timeout);
+    lx_timer_start(&stream->timeout,  TcpStream::handle_timeout, timeout);
   }
 
   /* handlers for event loop */
