@@ -3,13 +3,11 @@
   <a href="https://michaldziuba.dev"><img src="https://github.com/user-attachments/assets/40c000fa-26b2-425d-98d0-ad68d3026b0e" alt="Logo" height=170></a>
 </p>
 
-<h1 align="center">Done.js (codename)</h1>
+<h1 align="center">PandJS</h1>
 
 > ⚠️ Early stage of development.
 
-My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++. Very unstable.
-
-Once I will figure out how things work together - I will rewrite this project.
+My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++. Very unstable as I learn how things work together.
 
 ### TODO:
 
@@ -18,14 +16,17 @@ Once I will figure out how things work together - I will rewrite this project.
 - [x] Create timers
 - [x] Clunky TCP support
 - [x] Basic support for ES6 imports
+- [ ] Improve TCP module
+- [ ] Improve memory management and fix potential leaks
+- [ ] File system module
 
 > Current state example:
 
 ```js
 import { 
   assert, 
-  assertStrictEqual, 
-  assertThrows 
+  assertThrows,
+  assertStrictEqual  
 } from 'std:assert';
 import { tcpListen } from 'std:net';
 
@@ -37,8 +38,8 @@ Runtime.argv.forEach(item => {
   console.log(`Arg: ${item}`);
 });
 
-assertThrows(willThrow);
 assert(2 + 2 == 4);
+assertThrows(willThrow);
 assertStrictEqual(2, 2);
 
 console.log(`Platform is ${Runtime.platform} and pid is: ${Runtime.pid}`);
@@ -62,3 +63,7 @@ tcpListen((socket) => {
   });
 }, 8000);
 ```
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.

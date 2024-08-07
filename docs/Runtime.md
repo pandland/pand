@@ -27,7 +27,7 @@ Returns runtime's version as a string - [semantic version](https://semver.org/) 
 Returns the script arguments (as an array of strings) to the program.
 
 ```sh
-done ./your-script.js arg1 arg2 ... argN
+pand ./your-script.js arg1 arg2 ... argN
 ```
 
 ```js
