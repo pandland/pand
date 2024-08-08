@@ -14,6 +14,7 @@ class TcpStream {
 public:
   lx_connection_t *conn;
   lx_timer_t timeout;
+  bool paused = false;
   v8::Persistent<v8::Object> obj;
 
   TcpStream(v8::Isolate *isolate, v8::Local<v8::Object> obj) {
@@ -41,6 +42,12 @@ public:
 
     v8::Local<v8::FunctionTemplate> setTimeoutTemplate = v8::FunctionTemplate::New(isolate, TcpStream::set_timeout);
     t->PrototypeTemplate()->Set(isolate, "setTimeout", setTimeoutTemplate);
+
+    v8::Local<v8::FunctionTemplate> pauseTemplate = v8::FunctionTemplate::New(isolate, TcpStream::pause);
+    t->PrototypeTemplate()->Set(isolate, "pause", pauseTemplate);
+
+    v8::Local<v8::FunctionTemplate> resumeTemplate = v8::FunctionTemplate::New(isolate, TcpStream::resume);
+    t->PrototypeTemplate()->Set(isolate, "resume", resumeTemplate);
     
     v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
     TcpStream::streamConstructor.Reset(isolate, func);
@@ -67,12 +74,8 @@ public:
     char *buf = strdup(*str);
 
     lx_write_t *write_op = lx_write_alloc(buf, str.length());
+    write_op->data = stream;
     lx_write(write_op, stream->conn, TcpStream::handle_write);
-  }
-
-  static void handle_write(lx_write_t *write_op, int status) {
-    free((void*)write_op->buf);
-    free(write_op);
   }
 
   static void close(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -84,7 +87,8 @@ public:
 
   static void set_timeout(const v8::FunctionCallbackInfo<v8::Value> &args) {
     v8::Isolate *isolate = args.GetIsolate();
-    
+    v8::HandleScope handle_scope(isolate);
+
     if (args.Length() != 1 && !args[0]->IsNumber()) {
       isolate->ThrowException(v8::Exception::Error(v8_str(isolate, "Expected timeout as number")));
       return;
@@ -92,12 +96,44 @@ public:
 
     int64_t timeout = args[0].As<v8::Number>()->Value();
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
-    
+
+    if (timeout == 0) {
+      lx_timer_stop(&stream->timeout);
+      return;
+    }
+
     lx_timer_stop(&stream->timeout);
     lx_timer_start(&stream->timeout,  TcpStream::handle_timeout, timeout);
   }
 
+  static void pause(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
+
+    TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
+    if (!stream->paused) {
+      lx_stop_reading(&stream->conn->event, stream->conn->fd);
+      stream->paused = true;
+    }
+  }
+
+  static void resume(const v8::FunctionCallbackInfo<v8::Value> &args) {
+    v8::Isolate *isolate = args.GetIsolate();
+    v8::HandleScope handle_scope(isolate);
+
+    TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
+    if (stream->paused) {
+      lx_set_read_event(&stream->conn->event, stream->conn->fd);
+      stream->paused = false;
+    }
+  }
+
   /* handlers for event loop */
+  static void handle_write(lx_write_t *write_op, int status) {
+    free((void*)write_op->buf);
+    free(write_op);
+  }
+
   static void handle_data(lx_connection_t *conn) {
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
     
@@ -147,7 +183,7 @@ class TcpServer {
   v8::Global<v8::Function> callback;
   int port;
 
-  static const int64_t kDefaultTimeout = 5 * 1000;
+  static const int64_t kDefaultTimeout = 120 * 1000;
 public:
   static void initialize(v8::Local<v8::Object> exports, v8::Isolate *isolate, v8::Local<v8::Context> context)  {
     v8::Local<v8::Function> func = v8::FunctionTemplate::New(isolate, listen)->GetFunction(context).ToLocalChecked();

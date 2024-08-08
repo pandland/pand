@@ -18,10 +18,29 @@ class Socket {
     // otherwise - ignore and make it safe to call multiple times
   }
 
+  pause() {
+    if (this._handle) {
+      this._handle.pause();
+    }
+  }
+
+  resume() {
+    if (this._handle) {
+      this._handle.resume();
+    }
+  }
+
   setTimeout(delay) {
+    if (!Number.isInteger(delay)) {
+      throw new Error('Invalid socket timeout.');
+    }
+
     if (this._handle) {
       this._handle.setTimeout(delay);
+      return true;
     }
+
+    return false;
   }
 
   write(data) {
@@ -43,6 +62,12 @@ function toPort(value) {
   }
   
   return port;
+}
+
+class Server {
+  constructor() {
+    this.connections = 0;
+  }
 }
 
 export const tcpListen = (callback, port) => {
