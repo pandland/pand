@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include <assert.h>
-#include "js_internals.hh"
+#include "js_internals.h"
 #include <v8.h>
 #include "v8_utils.cc"
 

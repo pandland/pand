@@ -30,6 +30,6 @@ def generate_cpp_header(folder_path, output_file):
         f.write(f"#endif // {header_guard}\n")
 
 folder_path = "./js"
-output_file = "core/js_internals.hh" 
+output_file = "core/js_internals.h" 
 
 generate_cpp_header(folder_path, output_file)
