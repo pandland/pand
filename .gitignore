@@ -32,3 +32,4 @@ _
 *.app
 sample
 pand
+build/
