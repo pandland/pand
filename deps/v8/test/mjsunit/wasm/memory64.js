@@ -584,7 +584,7 @@ function allowOOM(fn) {
   builder2.addImportedMemory('imp', 'mem');
   assertThrows(
       () => builder2.instantiate({imp: {mem: mem64}}), WebAssembly.LinkError,
-      'WebAssembly.Instance(): cannot import memory64 as memory32');
+      'WebAssembly.Instance(): cannot import i64 memory as i32');
 })();
 
 (function TestImportMemory32AsMemory64() {
@@ -600,7 +600,7 @@ function allowOOM(fn) {
       'imp', 'mem', 1, 1, /* shared */ false, /* memory64 */ true);
   assertThrows(
       () => builder2.instantiate({imp: {mem: mem32}}), WebAssembly.LinkError,
-      'WebAssembly.Instance(): cannot import memory32 as memory64');
+      'WebAssembly.Instance(): cannot import i32 memory as i64');
 })();
 
 function InstantiatingWorkerCode() {
@@ -636,7 +636,7 @@ function InstantiatingWorkerCode() {
   worker.postMessage([mem64, module2]);
   assertEquals(
       'Exception: LinkError: WebAssembly.Instance(): ' +
-          'cannot import memory64 as memory32',
+          'cannot import i64 memory as i32',
       worker.getMessage());
 })();
 
@@ -657,6 +657,47 @@ function InstantiatingWorkerCode() {
   worker.postMessage([mem32, module2]);
   assertEquals(
       'Exception: LinkError: WebAssembly.Instance(): ' +
-          'cannot import memory32 as memory64',
+          'cannot import i32 memory as i64',
       worker.getMessage());
+})();
+
+(function TestMemory64EmbedLoadInFloatBinop() {
+  print(arguments.callee.name);
+  let builder = new WasmModuleBuilder();
+  builder.addMemory64(1, 1, true);
+
+  builder.addFunction('move_load_into_float_binop',
+                      makeSig([kWasmF64], [kWasmF64]))
+    .addBody([
+      ...wasmF64Const(0),
+      kExprLocalGet, 0,
+      kExprF64Add,
+      ...wasmI64Const(65536),
+      kExprF64LoadMem, 0, 0,
+      kExprF64Add,
+    ])
+    .exportFunc();
+
+  builder.addFunction('dont_move_load_if_something_traps_in_between',
+                      makeSig([], [kWasmF64]))
+    .addBody([
+      ...wasmI64Const(65536),
+      kExprF64LoadMem, 0, 0,
+
+      ...wasmI32Const(42),
+      ...wasmI64Const(0),
+      kExprI32LoadMem, 0, 0, // Loads zero as i32.
+      kExprI32DivU, // Divide by zero trap.
+      kExprF64UConvertI32,
+
+      kExprF64Add,
+    ])
+    .exportFunc();
+
+  // Instantiation works, this should throw at runtime.
+  let instance = builder.instantiate();
+  assertTraps(kTrapMemOutOfBounds, () =>
+    instance.exports.move_load_into_float_binop(1.0));
+  assertTraps(kTrapMemOutOfBounds, () =>
+    instance.exports.dont_move_load_if_something_traps_in_between());
 })();

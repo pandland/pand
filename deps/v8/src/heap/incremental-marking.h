@@ -53,7 +53,7 @@ constexpr const char* ToString(StepOrigin step_origin) {
 
 class V8_EXPORT_PRIVATE IncrementalMarking final {
  public:
-  class V8_NODISCARD PauseBlackAllocationScope final {
+  class V8_NODISCARD V8_EXPORT_PRIVATE PauseBlackAllocationScope final {
    public:
     explicit PauseBlackAllocationScope(IncrementalMarking* marking);
     ~PauseBlackAllocationScope();
@@ -102,6 +102,7 @@ class V8_EXPORT_PRIVATE IncrementalMarking final {
   bool Stop();
 
   void UpdateMarkingWorklistAfterScavenge();
+  void UpdateExternalPointerTableAfterScavenge();
   void UpdateMarkedBytesAfterScavenge(size_t dead_bytes_in_new_space);
 
   // Performs incremental marking step and finalizes marking if complete.

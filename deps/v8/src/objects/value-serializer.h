@@ -264,11 +264,9 @@ class ValueDeserializer {
   Maybe<double> ReadDouble() V8_WARN_UNUSED_RESULT;
   Maybe<base::Vector<const uint8_t>> ReadRawBytes(size_t size)
       V8_WARN_UNUSED_RESULT;
+  Maybe<base::Vector<const base::uc16>> ReadRawTwoBytes(size_t size)
+      V8_WARN_UNUSED_RESULT;
   MaybeHandle<Object> ReadObject() V8_WARN_UNUSED_RESULT;
-
-  // Reads a string if it matches the one provided.
-  // Returns true if this was the case. Otherwise, nothing is consumed.
-  bool ReadExpectedString(DirectHandle<String> expected) V8_WARN_UNUSED_RESULT;
 
   // Like ReadObject, but skips logic for special cases in simulating the
   // "stack machine".

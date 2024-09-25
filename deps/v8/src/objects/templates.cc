@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 
 #include "src/api/api-inl.h"
 #include "src/base/macros.h"
@@ -22,8 +23,7 @@
 #include "src/objects/shared-function-info-inl.h"
 #include "src/objects/string-inl.h"
 
-namespace v8 {
-namespace internal {
+namespace v8::internal {
 
 bool FunctionTemplateInfo::HasInstanceType() {
   return instance_type() != kNoJSApiObjectType;
@@ -76,7 +76,7 @@ bool FunctionTemplateInfo::IsTemplateFor(Tagged<Map> map) const {
   // There is a constraint on the object; check.
   if (!IsJSObjectMap(map)) return false;
 
-  if (v8_flags.embedder_instance_types) {
+  if (v8_flags.experimental_embedder_instance_types) {
     DCHECK_IMPLIES(allowed_receiver_instance_type_range_start() == 0,
                    allowed_receiver_instance_type_range_end() == 0);
     if (base::IsInRange(map->instance_type(),
@@ -142,7 +142,7 @@ FunctionTemplateInfo::AllocateFunctionTemplateRareData(
   return *rare_data;
 }
 
-base::Optional<Tagged<Name>> FunctionTemplateInfo::TryGetCachedPropertyName(
+std::optional<Tagged<Name>> FunctionTemplateInfo::TryGetCachedPropertyName(
     Isolate* isolate, Tagged<Object> getter) {
   DisallowGarbageCollection no_gc;
   if (!IsFunctionTemplateInfo(getter)) {
@@ -164,24 +164,25 @@ int FunctionTemplateInfo::GetCFunctionsCount() const {
          kFunctionOverloadEntrySize;
 }
 
-Address FunctionTemplateInfo::GetCFunction(int index) const {
+Address FunctionTemplateInfo::GetCFunction(Isolate* isolate, int index) const {
   i::DisallowHeapAllocation no_gc;
   return v8::ToCData<kCFunctionTag>(
-      Cast<FixedArray>(GetCFunctionOverloads())
-          ->get(index * kFunctionOverloadEntrySize));
+      isolate, Cast<FixedArray>(GetCFunctionOverloads())
+                   ->get(index * kFunctionOverloadEntrySize));
 }
 
-const CFunctionInfo* FunctionTemplateInfo::GetCSignature(int index) const {
+const CFunctionInfo* FunctionTemplateInfo::GetCSignature(Isolate* isolate,
+                                                         int index) const {
   i::DisallowHeapAllocation no_gc;
   return v8::ToCData<CFunctionInfo*, kCFunctionInfoTag>(
-      Cast<FixedArray>(GetCFunctionOverloads())
-          ->get(index * kFunctionOverloadEntrySize + 1));
+      isolate, Cast<FixedArray>(GetCFunctionOverloads())
+                   ->get(index * kFunctionOverloadEntrySize + 1));
 }
 
 // static
 Handle<DictionaryTemplateInfo> DictionaryTemplateInfo::Create(
     Isolate* isolate, const v8::MemorySpan<const std::string_view>& names) {
-  Handle<FixedArray> property_names = isolate->factory()->NewFixedArray(
+  DirectHandle<FixedArray> property_names = isolate->factory()->NewFixedArray(
       static_cast<int>(names.size()), AllocationType::kOld);
   int index = 0;
   uint32_t unused_array_index;
@@ -339,5 +340,4 @@ Handle<JSObject> DictionaryTemplateInfo::NewInstance(
   return object;
 }
 
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal

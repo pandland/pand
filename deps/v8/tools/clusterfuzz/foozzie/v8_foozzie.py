@@ -92,7 +92,7 @@ CONFIGS = dict(
 )
 
 BASELINE_CONFIG = 'ignition'
-DEFAULT_CONFIG = 'ignition_turbo'
+DEFAULT_CONFIG = 'default'
 DEFAULT_D8 = 'd8'
 
 # Return codes.
@@ -110,13 +110,6 @@ SUPPORTED_ARCHS = ['ia32', 'x64', 'arm', 'arm64']
 
 FAILURE_HEADER_TEMPLATE = """#
 # V8 correctness failure
-# V8 correctness configs: %(configs)s
-# V8 correctness sources: %(source_key)s
-# V8 correctness suppression: %(suppression)s
-"""
-
-COMPACT_FAILURE_HEADER_TEMPLATE = """#
-# V8 correctness failure
 # V8 correctness sources: %(source_key)s
 # V8 correctness suppression: %(suppression)s
 """
@@ -125,27 +118,28 @@ COMPACT_FAILURE_HEADER_TEMPLATE = """#
 DETAILS_TEMPLATE = """#
 # CHECK
 #
-# Compared %(first_config_label)s with %(second_config_label)s
+# Compared %(first_config_arch)s with %(second_config_arch)s
 #
-# Flags of %(first_config_label)s:
+# Common flags:
+%(common_flags)s
+# Baseline flags:
 %(first_config_flags)s
-# Flags of %(second_config_label)s:
+# Comparison flags:
 %(second_config_flags)s
 #
 # Difference:
 %(difference)s%(source_file_text)s
 #
-### Start of configuration %(first_config_label)s:
+### Start of baseline output:
 %(first_config_output)s
-### End of configuration %(first_config_label)s
+### End of baseline output
 #
-### Start of configuration %(second_config_label)s:
+### Start of comparison output:
 %(second_config_output)s
-### End of configuration %(second_config_label)s
+### End of comparison output
 """
 
 FAILURE_TEMPLATE = FAILURE_HEADER_TEMPLATE + DETAILS_TEMPLATE
-COMPACT_FAILURE_TEMPLATE = COMPACT_FAILURE_HEADER_TEMPLATE + DETAILS_TEMPLATE
 
 SOURCE_FILE_TEMPLATE = """
 #
@@ -158,8 +152,7 @@ SOURCE_RE = re.compile(r'print\("v8-foozzie source: (.*)"\);')
 
 # The number of hex digits used from the hash of the original source file path.
 # Keep the number small to avoid duplicate explosion.
-SOURCE_HASH_LENGTH = 3
-COMPACT_SOURCE_HASH_LENGTH = 2
+SOURCE_HASH_LENGTH = 2
 
 # Placeholder string if no original source file could be determined.
 ORIGINAL_SOURCE_DEFAULT = 'none'
@@ -186,13 +179,24 @@ KNOWN_FAILURES = {
   'CrashTests/5694376231632896/1033966.js': 'flaky',
 }
 
-# Flags that are already crashy during smoke tests should not be used.
+# Flags that crash smoke tests or produce non-deterministic output should
+# not be used.
 DISALLOWED_FLAGS = [
-  # Bails out when sorting, leading to differences in sorted output.
-  '--multi-mapped-mock-allocator',
+    # Bails out when sorting, leading to differences in sorted output.
+    '--multi-mapped-mock-allocator',
 
-  # TODO(https://crbug.com/1393020): Changes the global object.
-  '--harmony-struct',
+    # TODO(https://crbug.com/1393020): Changes the global object.
+    '--harmony-struct',
+
+    # Cuts off stdout earlier in some situations and might alter the behavior
+    # of neutered runtime functions.
+    '--sandbox-testing',
+
+    # Various non-deterministic stats.
+    '--dump-counters',
+    '--expose-statistics',
+    '--log',
+    '--rcs',
 ]
 
 # List pairs of flags that lead to contradictory cycles, i.e.:
@@ -279,8 +283,8 @@ class ExecutionArgumentsConfig(object):
 
     flags = filter_flags(CONFIGS[config] + get('config_extra_flags'))
 
-    RunOptions = namedtuple('RunOptions', ['arch', 'config', 'd8', 'flags'])
-    return RunOptions(infer_arch(d8), config, d8, flags)
+    RunOptions = namedtuple('RunOptions', ['arch', 'd8', 'flags'])
+    return RunOptions(infer_arch(d8), d8, flags)
 
 
 class ExecutionConfig(object):
@@ -288,7 +292,6 @@ class ExecutionConfig(object):
     self.options = options
     self.label = label
     self.arch = getattr(options, label).arch
-    self.config = getattr(options, label).config
     d8 = getattr(options, label).d8
     flags = getattr(options, label).flags
     self.command = Command(options, label, d8, flags)
@@ -301,15 +304,32 @@ class ExecutionConfig(object):
       self.fallback = ExecutionConfig(options, fallback_label)
 
   @property
+  def common_flags(self):
+    return self.command.common_flags
+
+  @property
+  def config_flags(self):
+    return self.command.config_flags
+
+  @property
   def flags(self):
     return self.command.flags
+
+  def has_config_flag(self, flag):
+    return (flag in self.config_flags or
+            self.fallback and self.fallback.has_config_flag(flag))
+
+  def remove_config_flag(self, flag):
+    self.command.remove_config_flag(flag)
+    if self.fallback:
+      self.fallback.remove_config_flag(flag)
 
   @property
   def is_error_simulation(self):
     return '--simulate-errors' in self.flags
 
 
-def parse_args():
+def parse_args(args):
   first_config_arguments = ExecutionArgumentsConfig('first')
   second_config_arguments = ExecutionArgumentsConfig('second')
 
@@ -325,14 +345,14 @@ def parse_args():
       help='skip suppressions to reproduce known issues')
   parser.add_argument(
       '--compact', default=False, action='store_true',
-      help='use more compact error reporting with fewer duplicates')
+      help='deprecated: compact error reporting is the default')
 
   # Add arguments for each run configuration.
   first_config_arguments.add_arguments(parser, BASELINE_CONFIG)
   second_config_arguments.add_arguments(parser, DEFAULT_CONFIG)
 
   parser.add_argument('testcase', help='path to test case')
-  options = parser.parse_args()
+  options = parser.parse_args(args)
 
   # Ensure we have a test case.
   assert (os.path.exists(options.testcase) and
@@ -344,7 +364,7 @@ def parse_args():
   options.default = second_config_arguments.make_options(
       options, default_config=DEFAULT_CONFIG)
 
-  # Use fallback configurations only on diffrent architectures. In this
+  # Use fallback configurations only on different architectures. In this
   # case we are going to re-test against the first architecture.
   if options.first.arch != options.second.arch:
     options.second_fallback = second_config_arguments.make_options(
@@ -354,10 +374,23 @@ def parse_args():
 
   # Ensure we make a valid comparison.
   if (options.first.d8 == options.second.d8 and
-      options.first.config == options.second.config):
-    parser.error('Need either executable or config difference.')
+      options.first.flags == options.second.flags):
+    parser.error('Need either executable or flag difference.')
 
   return options
+
+
+def create_execution_configs(options):
+  """Prepare the baseline, default and secondary configuration to compare to.
+
+  The default (turbofan) takes precedence as many of the secondary configs
+  are based on the turbofan config with additional parameters.
+  """
+  return [
+      ExecutionConfig(options, 'first'),
+      ExecutionConfig(options, 'default'),
+      ExecutionConfig(options, 'second'),
+  ]
 
 
 def get_meta_data(content):
@@ -375,7 +408,7 @@ def content_bailout(content, ignore_fun):
   bug = (ignore_fun(content) or '').strip()
   if bug:
     raise FailException(FAILURE_HEADER_TEMPLATE % dict(
-        configs='', source_key='', suppression=bug))
+        source_key='', suppression=bug))
 
 
 def fail_bailout(output, ignore_by_output_fun):
@@ -383,18 +416,16 @@ def fail_bailout(output, ignore_by_output_fun):
   bug = (ignore_by_output_fun(output.stdout) or '').strip()
   if bug:
     raise FailException(FAILURE_HEADER_TEMPLATE % dict(
-        configs='', source_key='', suppression=bug))
+        source_key='', suppression=bug))
 
 
 def format_difference(
     first_config, second_config,
     first_config_output, second_config_output,
-    difference, source_key=None, source=None, compact=False):
+    difference, source_key=None, source=None):
   # The first three entries will be parsed by clusterfuzz. Format changes
   # will require changes on the clusterfuzz side.
-  source_key = source_key or cluster_failures(source, compact)
-  first_config_label = '%s,%s' % (first_config.arch, first_config.config)
-  second_config_label = '%s,%s' % (second_config.arch, second_config.config)
+  source_key = source_key or cluster_failures(source)
   source_file_text = SOURCE_FILE_TEMPLATE % source if source else ''
 
   if PYTHON3:
@@ -405,16 +436,17 @@ def format_difference(
     second_stdout = second_config_output.stdout.decode('utf-8', 'replace')
     difference = difference.decode('utf-8', 'replace')
 
-  template = COMPACT_FAILURE_TEMPLATE if compact else FAILURE_TEMPLATE
-  text = (template % dict(
-      configs='%s:%s' % (first_config_label, second_config_label),
+  assert first_config.common_flags == second_config.common_flags
+
+  text = (FAILURE_TEMPLATE % dict(
       source_file_text=source_file_text,
       source_key=source_key,
       suppression='', # We can't tie bugs to differences.
-      first_config_label=first_config_label,
-      second_config_label=second_config_label,
-      first_config_flags=' '.join(first_config.flags),
-      second_config_flags=' '.join(second_config.flags),
+      first_config_arch=first_config.arch,
+      second_config_arch=second_config.arch,
+      common_flags=' '.join(first_config.common_flags),
+      first_config_flags=' '.join(first_config.config_flags),
+      second_config_flags=' '.join(second_config.config_flags),
       first_config_output=first_stdout,
       second_config_output=second_stdout,
       source=source,
@@ -426,12 +458,11 @@ def format_difference(
     return text.encode('utf-8', 'replace')
 
 
-def cluster_failures(source, compact, known_failures=None):
+def cluster_failures(source, known_failures=None):
   """Returns a string key for clustering duplicate failures.
 
   Args:
     source: The original source path where the failure happened.
-    compact: Whether to use compact source hashes.
     known_failures: Mapping from original source path to failure key.
   """
   known_failures = known_failures or KNOWN_FAILURES
@@ -449,8 +480,7 @@ def cluster_failures(source, compact, known_failures=None):
 
   # We map all remaining failures to a short hash of the original source.
   long_key = hashlib.sha1(source.encode('utf-8')).hexdigest()
-  hash_length = COMPACT_SOURCE_HASH_LENGTH if compact else SOURCE_HASH_LENGTH
-  return long_key[:hash_length]
+  return long_key[:SOURCE_HASH_LENGTH]
 
 
 class RepeatedRuns(object):
@@ -477,8 +507,7 @@ class RepeatedRuns(object):
 
 
 def run_comparisons(suppress, execution_configs, test_case, timeout,
-                    verbose=True, ignore_crashes=True, source_key=None,
-                    compact=False):
+                    verbose=True, ignore_crashes=True, source_key=None):
   """Runs different configurations and bails out on output difference.
 
   Args:
@@ -493,7 +522,6 @@ def run_comparisons(suppress, execution_configs, test_case, timeout,
         and immediately flag crashes as a failure.
     source_key: A fixed source key. If not given, it will be inferred from the
         output.
-    compact: Whether to use compact failure output.
   """
   runner = RepeatedRuns(test_case, timeout, verbose)
 
@@ -528,7 +556,7 @@ def run_comparisons(suppress, execution_configs, test_case, timeout,
 
       raise FailException(format_difference(
           baseline_config, comparison_config, baseline_output,
-          comparison_output, difference, source_key, source, compact))
+          comparison_output, difference, source_key, source))
 
   if runner.has_crashed:
     if ignore_crashes:
@@ -539,11 +567,11 @@ def run_comparisons(suppress, execution_configs, test_case, timeout,
       # Subsume simulated and unexpected crashes (e.g. during smoke tests)
       # with one failure state.
       raise FailException(FAILURE_HEADER_TEMPLATE % dict(
-          configs='', source_key='', suppression=runner.crash_state))
+          source_key='', suppression=runner.crash_state))
 
 
 def main():
-  options = parse_args()
+  options = parse_args(sys.argv[1:])
   suppress = v8_suppressions.get_suppression(options.skip_suppressions)
 
   # Static bailout based on test case content or metadata.
@@ -555,14 +583,13 @@ def main():
   content_bailout(get_meta_data(content), suppress.ignore_by_metadata)
   content_bailout(content, suppress.ignore_by_content)
 
-  # Prepare the baseline, default and a secondary configuration to compare to.
-  # The default (turbofan) takes precedence as many of the secondary configs
-  # are based on the turbofan config with additional parameters.
-  execution_configs = [
-    ExecutionConfig(options, 'first'),
-    ExecutionConfig(options, 'default'),
-    ExecutionConfig(options, 'second'),
-  ]
+  execution_configs = create_execution_configs(options)
+
+  # Some configs will be dropped or altered based on the testcase content.
+  changes = suppress.adjust_configs(execution_configs, content)
+  if changes:
+    print('# Adjusted flags and experiments based on the test case:')
+    print('\n'.join(changes))
 
   # First, run some fixed smoke tests in all configs to ensure nothing
   # is fundamentally wrong, in order to prevent bug flooding.
@@ -578,7 +605,6 @@ def main():
         # Special source key for smoke tests so that clusterfuzz dedupes all
         # cases on this in case it's hit.
         source_key = 'smoke test failed',
-        compact = options.compact,
     )
 
   # Second, run all configs against the fuzz test case.
@@ -586,7 +612,6 @@ def main():
       suppress, execution_configs,
       test_case=options.testcase,
       timeout=TEST_TIMEOUT_SEC,
-      compact = options.compact,
   )
 
   # TODO(machenbach): Figure out if we could also return a bug in case
@@ -609,7 +634,7 @@ if __name__ == "__main__":
     # Make sure clusterfuzz reports internal errors and wrong usage.
     # Use one label for all internal and usage errors.
     print(FAILURE_HEADER_TEMPLATE % dict(
-        configs='', source_key='', suppression='wrong_usage'))
+        source_key='', suppression='wrong_usage'))
     result = RETURN_FAIL
   except MemoryError:
     # Running out of memory happens occasionally but is not actionable.
@@ -617,7 +642,7 @@ if __name__ == "__main__":
     result = RETURN_PASS
   except Exception as e:
     print(FAILURE_HEADER_TEMPLATE % dict(
-        configs='', source_key='', suppression='internal_error'))
+        source_key='', suppression='internal_error'))
     print('# Internal error: %s' % e)
     traceback.print_exc(file=sys.stdout)
     result = RETURN_FAIL

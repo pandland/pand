@@ -5,6 +5,8 @@
 #ifndef V8_LOGGING_RUNTIME_CALL_STATS_H_
 #define V8_LOGGING_RUNTIME_CALL_STATS_H_
 
+#include <optional>
+
 #include "src/base/macros.h"
 
 #ifdef V8_RUNTIME_CALL_STATS
@@ -379,6 +381,7 @@ class RuntimeCallTimer final {
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize,                                    \
                               TurboshaftCodeEliminationAndSimplification)     \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftCsaBranchElimination)    \
+  ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftWasmInJSInlining)        \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize,                                    \
                               TurboshaftCsaEarlyMachineOptimization)          \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftCsaLateEscapeAnalysis)   \
@@ -397,7 +400,6 @@ class RuntimeCallTimer final {
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftOptimize)                \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftProfileApplication)      \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftRecreateSchedule)        \
-  ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftSimplifiedLowering)      \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftSpecialRPOScheduling)    \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftStoreStoreElimination)   \
   ADD_THREAD_SPECIFIC_COUNTER(V, Optimize, TurboshaftTagUntagLowering)        \
@@ -719,7 +721,7 @@ class WorkerThreadRuntimeCallStats final {
  private:
   base::Mutex mutex_;
   std::vector<std::unique_ptr<RuntimeCallStats>> tables_;
-  base::Optional<base::Thread::LocalStorageKey> tls_key_;
+  std::optional<base::Thread::LocalStorageKey> tls_key_;
   // Since this is for creating worker thread runtime-call stats, record the
   // main thread ID to ensure we never create a worker RCS table for the main
   // thread.

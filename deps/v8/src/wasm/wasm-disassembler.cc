@@ -413,6 +413,11 @@ class ImmediatesPrinter {
     if (imm.type.is_index()) use_type(imm.type.ref_index());
   }
 
+  void BrOnCastFlags(BrOnCastImmediate& flags) {
+    // Ignored here. For printing text format, we do all the work via the
+    // two calls to {ValueType()} that we get for a br_on_cast.
+  }
+
   void BranchDepth(BranchDepthImmediate& imm) { PrintDepthAsLabel(imm.depth); }
 
   void BranchTable(BranchTableImmediate& imm) {
@@ -711,8 +716,9 @@ void OffsetsProvider::CollectOffsets(const WasmModule* module,
   data_offsets_.reserve(module->data_segments.size());
   recgroups_.reserve(4);  // We can't know, so this is just a guess.
 
+  WasmDetectedFeatures unused_detected_features;
   ModuleDecoderImpl decoder{WasmEnabledFeatures::All(), wire_bytes, kWasmOrigin,
-                            this};
+                            &unused_detected_features, this};
   constexpr bool kNoVerifyFunctions = false;
   decoder.DecodeModule(kNoVerifyFunctions);
 }
@@ -1012,9 +1018,10 @@ void ModuleDisassembler::PrintModule(Indentation indentation, size_t max_mb) {
     if (elem.shared) out_ << "shared ";
     names_->PrintValueType(out_, elem.type);
 
-    ModuleDecoderImpl decoder(WasmEnabledFeatures::All(),
-                              wire_bytes_.module_bytes(),
-                              ModuleOrigin::kWasmOrigin);
+    WasmDetectedFeatures unused_detected_features;
+    ModuleDecoderImpl decoder(
+        WasmEnabledFeatures::All(), wire_bytes_.module_bytes(),
+        ModuleOrigin::kWasmOrigin, &unused_detected_features);
     decoder.consume_bytes(elem.elements_wire_bytes_offset);
     for (size_t i = 0; i < elem.element_count; i++) {
       ConstantExpression entry = decoder.consume_element_segment_entry(
@@ -1074,7 +1081,7 @@ void ModuleDisassembler::PrintModule(Indentation indentation, size_t max_mb) {
     }
     if (data.shared) out_ << " shared";
     if (data.active) {
-      ValueType type = module_->memories[data.memory_index].is_memory64
+      ValueType type = module_->memories[data.memory_index].is_memory64()
                            ? kWasmI64
                            : kWasmI32;
       PrintInitExpression(data.dest_addr, type);

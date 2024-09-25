@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 
 #include "src/base/small-vector.h"
 #include "src/base/utils/random-number-generator.h"
@@ -16,8 +17,9 @@
 
 // This whole compilation unit should only be included in non-official builds to
 // reduce binary size (it's a testing-only implementation which lives in src/ so
-// that the GenerateRandomWasmModule runtime function can use it).
-#ifdef OFFICIAL_BUILD
+// that the GenerateRandomWasmModule runtime function can use it).  We normally
+// disable V8_WASM_RANDOM_FUZZERS in official builds.
+#ifndef V8_WASM_RANDOM_FUZZERS
 #error Exclude this compilation unit in official builds.
 #endif
 
@@ -353,7 +355,7 @@ FunctionSig* CreateSignature(Zone* zone,
   for (auto& type : return_types) {
     builder.AddReturn(type);
   }
-  return builder.Build();
+  return builder.Get();
 }
 
 template <WasmModuleGenerationOptions options>
@@ -394,7 +396,7 @@ class BodyGen {
         DCHECK_NE(type, kWasmVoid);
         builder.AddReturn(type);
       }
-      FunctionSig* sig = builder.Build();
+      FunctionSig* sig = builder.Get();
       const bool is_final = true;
       int sig_id = gen->builder_->builder()->AddSignature(sig, is_final);
       gen->builder_->EmitI32V(sig_id);
@@ -539,11 +541,8 @@ class BodyGen {
     catch_blocks_.push_back(control_depth);
     for (int i = 0; i < num_catch; ++i) {
       const FunctionSig* exception_type = builder_->builder()->GetTagType(i);
-      auto exception_type_vec =
-          base::VectorOf(exception_type->parameters().begin(),
-                         exception_type->parameter_count());
       builder_->EmitWithU32V(kExprCatch, i);
-      ConsumeAndGenerate(exception_type_vec, return_type_vec, data);
+      ConsumeAndGenerate(exception_type->parameters(), return_type_vec, data);
     }
     if (has_catch_all) {
       builder_->Emit(kExprCatchAll);
@@ -623,7 +622,7 @@ class BodyGen {
     if (has_ref) block_returns.last() = kWasmExnRef;
     {
       BlockScope block(this, kExprBlock, param_types, block_returns,
-                       base::VectorOf(block_returns));
+                       block_returns);
       try_table_rec(param_types, return_types, catch_cases, i + 1, data);
     }
     // Catch label. Consume the unpacked values and exnref (if any), produce
@@ -687,9 +686,9 @@ class BodyGen {
     // There is always at least the block representing the function body.
     DCHECK(!blocks_.empty());
     const uint32_t target_block = data->get<uint8_t>() % blocks_.size();
-    const auto break_types = blocks_[target_block];
+    const auto break_types = base::VectorOf(blocks_[target_block]);
 
-    Generate(base::VectorOf(break_types), data);
+    Generate(break_types, data);
     builder_->EmitWithI32V(
         kExprBr, static_cast<uint32_t>(blocks_.size()) - 1 - target_block);
   }
@@ -748,7 +747,7 @@ class BodyGen {
         kExprBrOnNonNull,
         static_cast<uint32_t>(blocks_.size()) - 1 - target_block);
     ConsumeAndGenerate(
-        base::VectorOf(break_types.data(), break_types.size() - 1),
+        break_types.SubVector(0, break_types.size() - 1),
         wanted_kind == kVoid
             ? base::Vector<ValueType>{}
             : base::VectorOf({ValueType::Primitive(wanted_kind)}),
@@ -807,7 +806,7 @@ class BodyGen {
 
   void return_op(DataRange* data) {
     auto returns = builder_->signature()->returns();
-    Generate(base::VectorOf(returns.begin(), returns.size()), data);
+    Generate(returns, data);
     builder_->Emit(kExprReturn);
   }
 
@@ -1119,11 +1118,9 @@ class BodyGen {
       }
       return;
     }
-    auto return_types =
-        base::VectorOf(sig->returns().begin(), sig->return_count());
     auto wanted_types =
         base::VectorOf(&wanted_kind, wanted_kind == kWasmVoid ? 0 : 1);
-    ConsumeAndGenerate(return_types, wanted_types, data);
+    ConsumeAndGenerate(sig->returns(), wanted_types, data);
   }
 
   struct Var {
@@ -1252,10 +1249,7 @@ class BodyGen {
     } else {
       int tag = data->get<uint8_t>() % builder_->builder()->NumTags();
       const FunctionSig* exception_sig = builder_->builder()->GetTagType(tag);
-      base::Vector<const ValueType> exception_types(
-          exception_sig->parameters().begin(),
-          exception_sig->parameter_count());
-      Generate(exception_types, data);
+      Generate(exception_sig->parameters(), data);
       builder_->EmitWithU32V(kExprThrow, tag);
     }
   }
@@ -1879,7 +1873,7 @@ class BodyGen {
       return false;
     }
 
-    Generate(base::VectorOf(break_types.data(), break_types.size() - 1), data);
+    Generate(break_types.SubVector(0, break_types.size() - 1), data);
     if (data->get<bool>()) {
       // br_on_cast
       HeapType source_type = top_type(break_type.heap_type());
@@ -1896,8 +1890,7 @@ class BodyGen {
       // Fallthrough: The type has been up-cast to the source type of the
       // br_on_cast instruction! (If the type on the stack was more specific,
       // this loses type information.)
-      base::SmallVector<ValueType, 32> fallthrough_types(
-          base::VectorOf(break_types));
+      base::SmallVector<ValueType, 32> fallthrough_types(break_types);
       fallthrough_types.back() = ValueType::RefMaybeNull(
           source_type, source_is_nullable ? kNullable : kNonNullable);
       ConsumeAndGenerate(base::VectorOf(fallthrough_types), {}, data);
@@ -1920,8 +1913,7 @@ class BodyGen {
       builder_->EmitI32V(source_type.code());
       builder_->EmitI32V(target_type.code());
       // Fallthrough: The type has been cast to the target type.
-      base::SmallVector<ValueType, 32> fallthrough_types(
-          base::VectorOf(break_types));
+      base::SmallVector<ValueType, 32> fallthrough_types(break_types);
       fallthrough_types.back() = ValueType::RefMaybeNull(
           target_type, target_is_nullable ? kNullable : kNonNullable);
       ConsumeAndGenerate(base::VectorOf(fallthrough_types), {}, data);
@@ -2186,8 +2178,7 @@ class BodyGen {
         mutable_globals_(mutable_globals),
         structs_(structs),
         arrays_(arrays),
-        string_imports_(strings),
-        locals_initialized_(false) {
+        string_imports_(strings) {
     const FunctionSig* sig = fn->signature();
     blocks_.emplace_back();
     for (size_t i = 0; i < sig->return_count(); ++i) {
@@ -3065,7 +3056,7 @@ class BodyGen {
 
   void GenerateRef(HeapType type, DataRange* data,
                    Nullability nullability = kNullable) {
-    base::Optional<GeneratorRecursionScope> rec_scope;
+    std::optional<GeneratorRecursionScope> rec_scope;
     if (nullability) {
       rec_scope.emplace(this);
     }
@@ -3444,11 +3435,11 @@ class BodyGen {
   std::vector<uint8_t> mutable_globals_;  // indexes into {globals_}.
   uint32_t recursion_depth = 0;
   std::vector<int> catch_blocks_;
-  bool has_simd_;
+  bool has_simd_ = false;
   const std::vector<uint32_t>& structs_;
   const std::vector<uint32_t>& arrays_;
   const StringImports& string_imports_;
-  bool locals_initialized_;
+  bool locals_initialized_ = false;
 
   bool recursion_limit_reached() {
     return recursion_depth >= kMaxRecursionDepth;
@@ -3641,7 +3632,7 @@ class ModuleGen {
     for (int i = 0; i < num_params; ++i) {
       builder.AddParam(GetValueType<options>(module_range_, num_types));
     }
-    return builder.Build();
+    return builder.Get();
   }
 
   // Creates and adds random function signatures.
@@ -4343,7 +4334,7 @@ base::Vector<uint8_t> GenerateWasmModuleForInitExpressions(
     FunctionSig::Builder sig_builder(zone, 1, 0);
     sig_builder.AddReturn(return_type);
     uint32_t signature_index =
-        builder.ForceAddSignature(sig_builder.Build(), kIsFinal);
+        builder.ForceAddSignature(sig_builder.Get(), kIsFinal);
     function_signatures.push_back(signature_index);
   }
 
@@ -4404,9 +4395,16 @@ void EmitDeoptAndReturnValues(BodyGen<options> gen_body, WasmFunctionBuilder* f,
                               const FunctionSig* target_sig,
                               uint32_t target_sig_index, uint32_t global_index,
                               uint32_t table_index, DataRange* data) {
-  gen_body.Generate(base::VectorOf(target_sig->parameters().begin(),
-                                   target_sig->parameters().size()),
-                    data);
+  base::Vector<const ValueType> return_types = f->signature()->returns();
+  // Split the return types randomly and generate some values before the
+  // deopting call and some afterwards. (This makes sure that we have deopts
+  // where there are values on the wasm value stack which are not used by the
+  // deopting call itself.)
+  uint32_t returns_split = data->get<uint8_t>() % (return_types.size() + 1);
+  if (returns_split) {
+    gen_body.Generate(return_types.SubVector(0, returns_split), data);
+  }
+  gen_body.Generate(target_sig->parameters(), data);
   f->EmitWithU32V(kExprGlobalGet, global_index);
   // Tail calls can only be emitted if the return types match.
   bool same_returns = HasSameReturns(target_sig, f->signature());
@@ -4441,11 +4439,8 @@ void EmitDeoptAndReturnValues(BodyGen<options> gen_body, WasmFunctionBuilder* f,
     default:
       UNREACHABLE();
   }
-  gen_body.ConsumeAndGenerate(base::VectorOf(target_sig->returns().begin(),
-                                             target_sig->returns().size()),
-                              base::VectorOf(f->signature()->returns().begin(),
-                                             f->signature()->return_count()),
-                              data);
+  gen_body.ConsumeAndGenerate(target_sig->returns(),
+                              return_types.SubVectorFrom(returns_split), data);
 }
 
 template <WasmModuleGenerationOptions options>
@@ -4455,9 +4450,15 @@ void EmitCallAndReturnValues(BodyGen<options> gen_body, WasmFunctionBuilder* f,
   const FunctionSig* callee_sig = callee->signature();
   uint32_t callee_index =
       callee->func_index() + gen_body.NumImportedFunctions();
-  gen_body.Generate(base::VectorOf(callee_sig->parameters().begin(),
-                                   callee_sig->parameters().size()),
-                    data);
+
+  base::Vector<const ValueType> return_types = f->signature()->returns();
+  // Split the return types randomly and generate some values before the
+  // deopting call and some afterwards to create more interesting test cases.
+  uint32_t returns_split = data->get<uint8_t>() % (return_types.size() + 1);
+  if (returns_split) {
+    gen_body.Generate(return_types.SubVector(0, returns_split), data);
+  }
+  gen_body.Generate(callee_sig->parameters(), data);
   // Tail calls can only be emitted if the return types match.
   bool same_returns = HasSameReturns(callee_sig, f->signature());
   size_t option_count = (same_returns + 1) * 3;
@@ -4493,11 +4494,8 @@ void EmitCallAndReturnValues(BodyGen<options> gen_body, WasmFunctionBuilder* f,
     default:
       UNREACHABLE();
   }
-  gen_body.ConsumeAndGenerate(base::VectorOf(callee_sig->returns().begin(),
-                                             callee_sig->returns().size()),
-                              base::VectorOf(f->signature()->returns().begin(),
-                                             f->signature()->return_count()),
-                              data);
+  gen_body.ConsumeAndGenerate(callee_sig->returns(),
+                              return_types.SubVectorFrom(returns_split), data);
 }
 }  // anonymous namespace
 

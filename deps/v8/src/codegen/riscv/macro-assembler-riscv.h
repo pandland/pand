@@ -9,6 +9,8 @@
 #ifndef V8_CODEGEN_RISCV_MACRO_ASSEMBLER_RISCV_H_
 #define V8_CODEGEN_RISCV_MACRO_ASSEMBLER_RISCV_H_
 
+#include <optional>
+
 #include "src/codegen/assembler-arch.h"
 #include "src/codegen/assembler.h"
 #include "src/codegen/bailout-reason.h"
@@ -299,6 +301,8 @@ class V8_EXPORT_PRIVATE MacroAssembler : public MacroAssemblerBase {
   bool CanUseNearCallOrJump(RelocInfo::Mode rmode) {
     return rmode != RelocInfo::EXTERNAL_REFERENCE;
   }
+  int64_t CalculateTargetOffset(Address target, RelocInfo::Mode rmode,
+                                uint8_t* pc);
   void PatchAndJump(Address target);
   void Jump(Handle<Code> code, RelocInfo::Mode rmode, COND_ARGS);
   void Jump(const ExternalReference& reference);
@@ -776,7 +780,12 @@ class V8_EXPORT_PRIVATE MacroAssembler : public MacroAssemblerBase {
 
   // Change endianness
   void ByteSwap(Register dest, Register src, int operand_size,
-                Register scratch);
+                Register scratch = no_reg);
+
+  // helper function for bytes reverse
+  template <int NBYTES>
+  void ReverseBytesHelper(Register rd, Register rs, Register tmp1,
+                          Register tmp2);
 
   void Clear_if_nan_d(Register rd, FPURegister fs);
   void Clear_if_nan_s(Register rd, FPURegister fs);
@@ -876,6 +885,15 @@ class V8_EXPORT_PRIVATE MacroAssembler : public MacroAssemblerBase {
 
   bool IsDoubleZeroRegSet() { return has_double_zero_reg_set_; }
   bool IsSingleZeroRegSet() { return has_single_zero_reg_set_; }
+
+  inline void MoveIfZero(Register rd, Register rj, Register rk) {
+    CHECK(CpuFeatures::IsSupported(ZICOND));
+    UseScratchRegisterScope temps(this);
+    Register scratch = temps.Acquire();
+    czero_nez(scratch, rj, rk);
+    czero_eqz(rd, rd, rk);
+    or_(rd, rd, scratch);
+  }
 
   inline void Move(Register dst, Tagged<Smi> smi) { li(dst, Operand(smi)); }
 
@@ -1603,6 +1621,12 @@ class V8_EXPORT_PRIVATE MacroAssembler : public MacroAssemblerBase {
   void DecodeField(Register reg) {
     DecodeField<Field>(reg, reg);
   }
+
+#ifdef V8_ENABLE_LEAPTIERING
+  // Load the entrypoint pointer of a JSDispatchTable entry.
+  void LoadCodeEntrypointFromJSDispatchTable(Register destination,
+                                             MemOperand field_operand);
+#endif  // V8_ENABLE_LEAPTIERING
   // Load a protected pointer field.
   void LoadProtectedPointerField(Register destination,
                                  MemOperand field_operand);
@@ -1718,9 +1742,9 @@ struct MoveCycleState {
   // {MoveToTempLocation}.
   RegList scratch_regs;
   // Available scratch registers during the move cycle resolution scope.
-  base::Optional<UseScratchRegisterScope> temps;
+  std::optional<UseScratchRegisterScope> temps;
   // Scratch register picked by {MoveToTempLocation}.
-  base::Optional<Register> scratch_reg;
+  std::optional<Register> scratch_reg;
 };
 
 inline MemOperand ExitFrameStackSlotOperand(int offset) {

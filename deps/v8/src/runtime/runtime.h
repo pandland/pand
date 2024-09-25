@@ -119,6 +119,7 @@ namespace internal {
   F(CompileBaseline, 1, 1)                      \
   F(CompileOptimized, 1, 1)                     \
   F(InstallBaselineCode, 1, 1)                  \
+  F(InstallSFICode, 1, 1)                       \
   F(HealOptimizedCodeSlot, 1, 1)                \
   F(FunctionLogNextExecution, 1, 1)             \
   F(InstantiateAsmJs, 4, 1)                     \
@@ -322,6 +323,7 @@ namespace internal {
   F(GetOwnPropertyKeys, 2, 1)                                          \
   F(GetPrivateMember, 2, 1)                                            \
   F(GetProperty, -1 /* [2, 3] */, 1)                                   \
+  F(HandleExceptionsInDisposeDisposableStack, 2, 1)                    \
   F(HasFastPackedElements, 1, 1)                                       \
   F(HasInPrototypeChain, 2, 1)                                         \
   F(HasProperty, 2, 1)                                                 \
@@ -342,6 +344,7 @@ namespace internal {
   F(ObjectGetOwnPropertyNames, 1, 1)                                   \
   F(ObjectGetOwnPropertyNamesTryFast, 1, 1)                            \
   F(ObjectHasOwnProperty, 2, 1)                                        \
+  F(HasOwnConstDataProperty, 2, 1)                                     \
   F(ObjectIsExtensible, 1, 1)                                          \
   F(ObjectKeys, 1, 1)                                                  \
   F(ObjectValues, 1, 1)                                                \
@@ -398,6 +401,7 @@ namespace internal {
   F(ResolvePromise, 2, 1)                \
   F(PromiseRejectAfterResolved, 2, 1)    \
   F(PromiseResolveAfterResolved, 2, 1)   \
+  F(ConstructSuppressedError, 3, 1)      \
   F(ConstructAggregateErrorHelper, 4, 1) \
   F(ConstructInternalAggregateErrorHelper, -1 /* <= 5*/, 1)
 
@@ -419,6 +423,7 @@ namespace internal {
   F(RegExpExperimentalOneshotExecTreatMatchAtEndAsFailure, 4, 1) \
   F(RegExpExecMultiple, 3, 1)                                    \
   F(RegExpInitializeAndCompile, 3, 1)                            \
+  F(RegExpMatchGlobalAtom, 3, 1)                                 \
   F(RegExpReplaceRT, 3, 1)                                       \
   F(RegExpSplit, 3, 1)                                           \
   F(RegExpStringFromFlags, 1, 1)                                 \
@@ -527,7 +532,9 @@ namespace internal {
   F(EnsureFeedbackVectorForFunction, 1, 1)    \
   F(FinalizeOptimization, 0, 1)               \
   F(ForceFlush, 1, 1)                         \
+  F(GetAbstractModuleSource, 0, 1)            \
   F(GetCallable, 1, 1)                        \
+  F(GetFeedback, 1, 1)                        \
   F(GetFunctionForCurrentFrame, 0, 1)         \
   F(GetInitializerFunction, 1, 1)             \
   F(GetOptimizationStatus, 1, 1)              \
@@ -554,7 +561,6 @@ namespace internal {
   F(HasFixedUint8Elements, 1, 1)              \
   F(HasHoleyElements, 1, 1)                   \
   F(HasObjectElements, 1, 1)                  \
-  F(HasOwnConstDataProperty, 2, 1)            \
   F(HasPackedElements, 1, 1)                  \
   F(HasSloppyArgumentsElements, 1, 1)         \
   F(HasSmiElements, 1, 1)                     \
@@ -578,7 +584,7 @@ namespace internal {
   F(IsSharedString, 1, 1)                     \
   F(IsSparkplugEnabled, 0, 1)                 \
   F(IsTurbofanEnabled, 0, 1)                  \
-  F(IsolateCountForTesting, 0, 1)             \
+  F(IsWasmTieringPredictable, 0, 1)           \
   F(MapIteratorProtector, 0, 1)               \
   F(NeverOptimizeFunction, 1, 1)              \
   F(NewRegExpWithBacktrackLimit, 3, 1)        \
@@ -631,7 +637,14 @@ namespace internal {
   F(TypedArraySet, 2, 1)                       \
   F(TypedArraySortFast, 1, 1)
 
+#if V8_ENABLE_DRUMBRAKE
+#define FOR_EACH_INTRINSIC_WASM_DRUMBRAKE(F, I) F(WasmRunInterpreter, 3, 1)
+#else
+#define FOR_EACH_INTRINSIC_WASM_DRUMBRAKE(F, I)
+#endif  // V8_ENABLE_DRUMBRAKE
+
 #define FOR_EACH_INTRINSIC_WASM(F, I)         \
+  FOR_EACH_INTRINSIC_WASM_DRUMBRAKE(F, I)     \
   F(ThrowBadSuspenderError, 0, 1)             \
   F(ThrowWasmError, 1, 1)                     \
   F(TrapHandlerThrowWasmError, 0, 1)          \
@@ -639,7 +652,7 @@ namespace internal {
   F(WasmI32AtomicWait, 4, 1)                  \
   F(WasmI64AtomicWait, 5, 1)                  \
   F(WasmMemoryGrow, 2, 1)                     \
-  F(WasmStackGuard, 0, 1)                     \
+  F(WasmStackGuard, 1, 1)                     \
   F(WasmThrow, 2, 1)                          \
   F(WasmReThrow, 1, 1)                        \
   F(WasmThrowJSTypeError, 0, 1)               \
@@ -661,7 +674,7 @@ namespace internal {
   F(WasmCompileLazy, 2, 1)                    \
   F(WasmAllocateFeedbackVector, 3, 1)         \
   F(WasmLiftoffDeoptFinish, 1, 1)             \
-  F(WasmCompileWrapper, 1, 1)                 \
+  F(TierUpJSToWasmWrapper, 1, 1)              \
   F(IsWasmExternalFunction, 1, 1)             \
   F(TierUpWasmToJSWrapper, 1, 1)              \
   F(WasmTriggerTierUp, 1, 1)                  \
@@ -690,46 +703,52 @@ namespace internal {
   F(WasmStringHash, 1, 1)                     \
   F(WasmSubstring, 3, 1)
 
-#define FOR_EACH_INTRINSIC_WASM_TEST(F, I)                 \
-  F(CheckIsOnCentralStack, 0, 1)                           \
-  F(CountUnoptimizedWasmToJSWrapper, 1, 1)                 \
-  F(DeserializeWasmModule, 2, 1)                           \
-  F(DisallowWasmCodegen, 1, 1)                             \
-  F(FlushLiftoffCode, 0, 1)                                \
-  F(EstimateCurrentMemoryConsumption, 0, 1)                \
-  F(FreezeWasmLazyCompilation, 1, 1)                       \
-  F(GetWasmExceptionTagId, 2, 1)                           \
-  F(GetWasmExceptionValues, 1, 1)                          \
-  F(GetWasmRecoveredTrapCount, 0, 1)                       \
-  F(HasUnoptimizedJSToJSWrapper, 1, 1)                     \
-  F(HasUnoptimizedWasmToJSWrapper, 1, 1)                   \
-  F(IsAsmWasmCode, 1, 1)                                   \
-  F(IsLiftoffFunction, 1, 1)                               \
-  F(IsThreadInWasm, 0, 1)                                  \
-  F(IsTurboFanFunction, 1, 1)                              \
-  F(IsUncompiledWasmFunction, 1, 1)                        \
-  F(IsWasmCode, 1, 1)                                      \
-  F(IsWasmDebugFunction, 1, 1)                             \
-  F(IsWasmPartialOOBWriteNoop, 0, 1)                       \
-  F(IsWasmTrapHandlerEnabled, 0, 1)                        \
-  F(SerializeWasmModule, 1, 1)                             \
-  F(SetWasmCompileControls, 2, 1)                          \
-  F(SetWasmImportedStringsEnabled, 1, 1)                   \
-  F(SetWasmInstantiateControls, 0, 1)                      \
-  F(WasmCompiledExportWrappersCount, 0, 1)                 \
-  F(WasmDeoptsExecutedCount, 0, 1)                         \
-  F(WasmDeoptsExecutedForFunction, 1, 1)                   \
-  F(WasmEnterDebugging, 0, 1)                              \
-  IF_NO_OFFICIAL_BUILD(F, WasmGenerateRandomModule, -1, 1) \
-  F(WasmGetNumberOfInstances, 1, 1)                        \
-  F(WasmLeaveDebugging, 0, 1)                              \
-  F(WasmNumCodeSpaces, 1, 1)                               \
-  F(WasmSwitchToTheCentralStackCount, 0, 1)                \
-  F(WasmTierUpFunction, 1, 1)                              \
-  F(WasmTraceEnter, 0, 1)                                  \
-  F(WasmTraceExit, 1, 1)                                   \
-  F(WasmTraceMemory, 1, 1)                                 \
-  F(WasmNull, 0, 1)
+#define FOR_EACH_INTRINSIC_WASM_TEST(F, I)                      \
+  F(CheckIsOnCentralStack, 0, 1)                                \
+  F(CountUnoptimizedWasmToJSWrapper, 1, 1)                      \
+  F(DeserializeWasmModule, 2, 1)                                \
+  F(DisallowWasmCodegen, 1, 1)                                  \
+  F(FlushLiftoffCode, 0, 1)                                     \
+  F(EstimateCurrentMemoryConsumption, 0, 1)                     \
+  F(FreezeWasmLazyCompilation, 1, 1)                            \
+  F(GetWasmExceptionTagId, 2, 1)                                \
+  F(GetWasmExceptionValues, 1, 1)                               \
+  F(GetWasmRecoveredTrapCount, 0, 1)                            \
+  F(HasUnoptimizedJSToJSWrapper, 1, 1)                          \
+  F(HasUnoptimizedWasmToJSWrapper, 1, 1)                        \
+  F(IsAsmWasmCode, 1, 1)                                        \
+  F(IsLiftoffFunction, 1, 1)                                    \
+  F(IsThreadInWasm, 0, 1)                                       \
+  F(IsTurboFanFunction, 1, 1)                                   \
+  F(IsUncompiledWasmFunction, 1, 1)                             \
+  F(IsWasmCode, 1, 1)                                           \
+  F(IsWasmDebugFunction, 1, 1)                                  \
+  F(IsWasmPartialOOBWriteNoop, 0, 1)                            \
+  F(IsWasmTrapHandlerEnabled, 0, 1)                             \
+  F(SerializeWasmModule, 1, 1)                                  \
+  F(SetWasmCompileControls, 2, 1)                               \
+  F(SetWasmImportedStringsEnabled, 1, 1)                        \
+  F(SetWasmInstantiateControls, 0, 1)                           \
+  F(WasmCompiledExportWrappersCount, 0, 1)                      \
+  F(WasmDeoptsExecutedCount, 0, 1)                              \
+  F(WasmDeoptsExecutedForFunction, 1, 1)                        \
+  F(WasmEnterDebugging, 0, 1)                                   \
+  IF_V8_WASM_RANDOM_FUZZERS(F, WasmGenerateRandomModule, -1, 1) \
+  F(WasmGetNumberOfInstances, 1, 1)                             \
+  F(WasmLeaveDebugging, 0, 1)                                   \
+  F(WasmNumCodeSpaces, 1, 1)                                    \
+  F(WasmSwitchToTheCentralStackCount, 0, 1)                     \
+  F(WasmTierUpFunction, 1, 1)                                   \
+  F(WasmTraceEnter, 0, 1)                                       \
+  F(WasmTraceExit, 1, 1)                                        \
+  F(WasmTraceMemory, 1, 1)                                      \
+  F(WasmNull, 0, 1)                                             \
+  F(WasmArray, 0, 1)                                            \
+  F(WasmStruct, 0, 1)
+
+#define FOR_EACH_INTRINSIC_WASM_DRUMBRAKE_TEST(F, I) \
+  F(WasmTraceBeginExecution, 0, 1)                   \
+  F(WasmTraceEndExecution, 0, 1)
 
 #define FOR_EACH_INTRINSIC_WEAKREF(F, I)                             \
   F(JSFinalizationRegistryRegisterWeakCellWithUnregisterToken, 4, 1) \
@@ -773,39 +792,40 @@ namespace internal {
   F(HasElementWithInterceptor, 2, 1)         \
   F(ObjectAssignTryFastcase, 2, 1)
 
-#define FOR_EACH_INTRINSIC_RETURN_OBJECT_IMPL(F, I) \
-  FOR_EACH_INTRINSIC_ARRAY(F, I)                    \
-  FOR_EACH_INTRINSIC_ATOMICS(F, I)                  \
-  FOR_EACH_INTRINSIC_BIGINT(F, I)                   \
-  FOR_EACH_INTRINSIC_CLASSES(F, I)                  \
-  FOR_EACH_INTRINSIC_COLLECTIONS(F, I)              \
-  FOR_EACH_INTRINSIC_COMPILER(F, I)                 \
-  FOR_EACH_INTRINSIC_DATE(F, I)                     \
-  FOR_EACH_INTRINSIC_DEBUG(F, I)                    \
-  FOR_EACH_INTRINSIC_FORIN(F, I)                    \
-  FOR_EACH_INTRINSIC_FUNCTION(F, I)                 \
-  FOR_EACH_INTRINSIC_GENERATOR(F, I)                \
-  FOR_EACH_INTRINSIC_IC(F, I)                       \
-  FOR_EACH_INTRINSIC_INTERNAL(F, I)                 \
-  FOR_EACH_INTRINSIC_TRACE(F, I)                    \
-  FOR_EACH_INTRINSIC_INTL(F, I)                     \
-  FOR_EACH_INTRINSIC_LITERALS(F, I)                 \
-  FOR_EACH_INTRINSIC_MODULE(F, I)                   \
-  FOR_EACH_INTRINSIC_NUMBERS(F, I)                  \
-  FOR_EACH_INTRINSIC_OBJECT(F, I)                   \
-  FOR_EACH_INTRINSIC_OPERATORS(F, I)                \
-  FOR_EACH_INTRINSIC_PROMISE(F, I)                  \
-  FOR_EACH_INTRINSIC_PROXY(F, I)                    \
-  FOR_EACH_INTRINSIC_REGEXP(F, I)                   \
-  FOR_EACH_INTRINSIC_SCOPES(F, I)                   \
-  FOR_EACH_INTRINSIC_SHADOW_REALM(F, I)             \
-  FOR_EACH_INTRINSIC_STRINGS(F, I)                  \
-  FOR_EACH_INTRINSIC_SYMBOL(F, I)                   \
-  FOR_EACH_INTRINSIC_TEMPORAL(F, I)                 \
-  FOR_EACH_INTRINSIC_TEST(F, I)                     \
-  FOR_EACH_INTRINSIC_TYPEDARRAY(F, I)               \
-  IF_WASM(FOR_EACH_INTRINSIC_WASM, F, I)            \
-  IF_WASM(FOR_EACH_INTRINSIC_WASM_TEST, F, I)       \
+#define FOR_EACH_INTRINSIC_RETURN_OBJECT_IMPL(F, I)               \
+  FOR_EACH_INTRINSIC_ARRAY(F, I)                                  \
+  FOR_EACH_INTRINSIC_ATOMICS(F, I)                                \
+  FOR_EACH_INTRINSIC_BIGINT(F, I)                                 \
+  FOR_EACH_INTRINSIC_CLASSES(F, I)                                \
+  FOR_EACH_INTRINSIC_COLLECTIONS(F, I)                            \
+  FOR_EACH_INTRINSIC_COMPILER(F, I)                               \
+  FOR_EACH_INTRINSIC_DATE(F, I)                                   \
+  FOR_EACH_INTRINSIC_DEBUG(F, I)                                  \
+  FOR_EACH_INTRINSIC_FORIN(F, I)                                  \
+  FOR_EACH_INTRINSIC_FUNCTION(F, I)                               \
+  FOR_EACH_INTRINSIC_GENERATOR(F, I)                              \
+  FOR_EACH_INTRINSIC_IC(F, I)                                     \
+  FOR_EACH_INTRINSIC_INTERNAL(F, I)                               \
+  FOR_EACH_INTRINSIC_TRACE(F, I)                                  \
+  FOR_EACH_INTRINSIC_INTL(F, I)                                   \
+  FOR_EACH_INTRINSIC_LITERALS(F, I)                               \
+  FOR_EACH_INTRINSIC_MODULE(F, I)                                 \
+  FOR_EACH_INTRINSIC_NUMBERS(F, I)                                \
+  FOR_EACH_INTRINSIC_OBJECT(F, I)                                 \
+  FOR_EACH_INTRINSIC_OPERATORS(F, I)                              \
+  FOR_EACH_INTRINSIC_PROMISE(F, I)                                \
+  FOR_EACH_INTRINSIC_PROXY(F, I)                                  \
+  FOR_EACH_INTRINSIC_REGEXP(F, I)                                 \
+  FOR_EACH_INTRINSIC_SCOPES(F, I)                                 \
+  FOR_EACH_INTRINSIC_SHADOW_REALM(F, I)                           \
+  FOR_EACH_INTRINSIC_STRINGS(F, I)                                \
+  FOR_EACH_INTRINSIC_SYMBOL(F, I)                                 \
+  FOR_EACH_INTRINSIC_TEMPORAL(F, I)                               \
+  FOR_EACH_INTRINSIC_TEST(F, I)                                   \
+  FOR_EACH_INTRINSIC_TYPEDARRAY(F, I)                             \
+  IF_WASM(FOR_EACH_INTRINSIC_WASM, F, I)                          \
+  IF_WASM(FOR_EACH_INTRINSIC_WASM_TEST, F, I)                     \
+  IF_WASM_DRUMBRAKE(FOR_EACH_INTRINSIC_WASM_DRUMBRAKE_TEST, F, I) \
   FOR_EACH_INTRINSIC_WEAKREF(F, I)
 
 #define FOR_EACH_THROWING_INTRINSIC(F)       \
@@ -885,7 +905,7 @@ class Runtime : public AllStatic {
   static bool NeedsExactContext(FunctionId id);
 
   // Checks whether the runtime function with the given {id} never returns
-  // to it's caller normally, i.e. whether it'll always raise an exception.
+  // to its caller normally, i.e. whether it'll always raise an exception.
   // More specifically: The C++ implementation returns the Heap::exception
   // sentinel, always.
   static bool IsNonReturning(FunctionId id);
@@ -894,9 +914,8 @@ class Runtime : public AllStatic {
   // allocation.
   static bool MayAllocate(FunctionId id);
 
-  // Check if a runtime function with the given {id} is allowlisted for
-  // using it with fuzzers.
-  static bool IsAllowListedForFuzzing(FunctionId id);
+  // Check if a runtime function with the given {id} is enabled for fuzzing.
+  static bool IsEnabledForFuzzing(FunctionId id);
 
   // Get the intrinsic function with the given name.
   static const Function* FunctionForName(const unsigned char* name, int length);

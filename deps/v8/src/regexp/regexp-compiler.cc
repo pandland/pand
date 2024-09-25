@@ -4,6 +4,8 @@
 
 #include "src/regexp/regexp-compiler.h"
 
+#include <optional>
+
 #include "src/base/safe_conversions.h"
 #include "src/execution/isolate.h"
 #include "src/objects/fixed-array-inl.h"
@@ -18,8 +20,7 @@
 #include "unicode/utypes.h"
 #endif  // V8_INTL_SUPPORT
 
-namespace v8 {
-namespace internal {
+namespace v8::internal {
 
 using namespace regexp_compiler_constants;  // NOLINT(build/namespaces)
 
@@ -670,11 +671,13 @@ ActionNode* ActionNode::ClearCaptures(Interval range, RegExpNode* on_success) {
 }
 
 ActionNode* ActionNode::BeginPositiveSubmatch(int stack_reg, int position_reg,
-                                              RegExpNode* on_success) {
+                                              RegExpNode* body,
+                                              ActionNode* success_node) {
   ActionNode* result =
-      on_success->zone()->New<ActionNode>(BEGIN_POSITIVE_SUBMATCH, on_success);
+      body->zone()->New<ActionNode>(BEGIN_POSITIVE_SUBMATCH, body);
   result->data_.u_submatch.stack_pointer_register = stack_reg;
   result->data_.u_submatch.current_position_register = position_reg;
+  result->data_.u_submatch.success_node = success_node;
   return result;
 }
 
@@ -780,6 +783,11 @@ int GetCaseIndependentLetters(Isolate* isolate, base::uc16 character,
 #ifdef V8_INTL_SUPPORT
 
   if (!unicode && RegExpCaseFolding::IgnoreSet().contains(character)) {
+    if (one_byte_subject && character > String::kMaxOneByteCharCode) {
+      // This function promises not to return a character that is impossible
+      // for the subject encoding.
+      return 0;
+    }
     letters[0] = character;
     DCHECK(ContainsOnlyUtf16CodeUnits(letters, 1));
     return 1;
@@ -865,15 +873,16 @@ inline bool EmitAtomNonLetter(Isolate* isolate, RegExpCompiler* compiler,
     // This can't match.  Must be an one-byte subject and a non-one-byte
     // character.  We do not need to do anything since the one-byte pass
     // already handled this.
+    CHECK(one_byte);
     return false;  // Bounds not checked.
   }
   bool checked = false;
   // We handle the length > 1 case in a later pass.
   if (length == 1) {
-    if (one_byte && chars[0] > String::kMaxOneByteCharCodeU) {
-      // Can't match - see above.
-      return false;  // Bounds not checked.
-    }
+    // GetCaseIndependentLetters promises not to return characters that can't
+    // match because of the subject encoding.  This case is already handled by
+    // the one-byte pass.
+    CHECK_IMPLIES(one_byte, chars[0] <= String::kMaxOneByteCharCodeU);
     if (!preloaded) {
       macro_assembler->LoadCurrentCharacter(cp_offset, on_failure, check);
       checked = check;
@@ -921,6 +930,7 @@ inline bool EmitAtomLetter(Isolate* isolate, RegExpCompiler* compiler,
   bool one_byte = compiler->one_byte();
   unibrow::uchar chars[4];
   int length = GetCaseIndependentLetters(isolate, c, compiler, chars, 4);
+  // The 0 and 1 case are handled by earlier passes.
   if (length <= 1) return false;
   // We may not need to check against the end of the input string
   // if this character lies before a character that matched.
@@ -1392,7 +1402,7 @@ bool RegExpNode::KeepRecursing(RegExpCompiler* compiler) {
 
 void ActionNode::FillInBMInfo(Isolate* isolate, int offset, int budget,
                               BoyerMooreLookahead* bm, bool not_at_start) {
-  base::Optional<RegExpFlags> old_flags;
+  std::optional<RegExpFlags> old_flags;
   if (action_type_ == MODIFY_FLAGS) {
     // It is not guaranteed that we hit the resetting modify flags node, due to
     // recursion budget limitation for filling in BMInfo. Therefore we reset the
@@ -1400,11 +1410,15 @@ void ActionNode::FillInBMInfo(Isolate* isolate, int offset, int budget,
     old_flags = bm->compiler()->flags();
     bm->compiler()->set_flags(flags());
   }
-  if (action_type_ == POSITIVE_SUBMATCH_SUCCESS) {
-    // Anything may follow a positive submatch success, thus we need to accept
-    // all characters from this position onwards.
-    bm->SetRest(offset);
-  } else {
+  if (action_type_ == BEGIN_POSITIVE_SUBMATCH) {
+    // We use the node after the lookaround to fill in the eats_at_least info
+    // so we have to use the same node to fill in the Boyer-Moore info.
+    success_node()->on_success()->FillInBMInfo(isolate, offset, budget - 1, bm,
+                                               not_at_start);
+  } else if (action_type_ != POSITIVE_SUBMATCH_SUCCESS) {
+    // We don't use the node after a positive submatch success because it
+    // rewinds the position.  Since we returned 0 as the eats_at_least value for
+    // this node, we don't need to fill in any data.
     on_success()->FillInBMInfo(isolate, offset, budget - 1, bm, not_at_start);
   }
   SaveBMInfo(bm, not_at_start, offset);
@@ -1419,7 +1433,15 @@ void ActionNode::GetQuickCheckDetails(QuickCheckDetails* details,
   if (action_type_ == SET_REGISTER_FOR_LOOP) {
     on_success()->GetQuickCheckDetailsFromLoopEntry(details, compiler,
                                                     filled_in, not_at_start);
-  } else {
+  } else if (action_type_ == BEGIN_POSITIVE_SUBMATCH) {
+    // We use the node after the lookaround to fill in the eats_at_least info
+    // so we have to use the same node to fill in the QuickCheck info.
+    success_node()->on_success()->GetQuickCheckDetails(details, compiler,
+                                                       filled_in, not_at_start);
+  } else if (action_type() != POSITIVE_SUBMATCH_SUCCESS) {
+    // We don't use the node after a positive submatch success because it
+    // rewinds the position.  Since we returned 0 as the eats_at_least value
+    // for this node, we don't need to fill in any data.
     if (action_type() == MODIFY_FLAGS) {
       compiler->set_flags(flags());
     }
@@ -2651,8 +2673,7 @@ int ChoiceNode::GreedyLoopTextLengthForAlternative(
       return kNodeIsTooComplexForGreedyLoops;
     }
     length += node_length;
-    SeqRegExpNode* seq_node = static_cast<SeqRegExpNode*>(node);
-    node = seq_node->on_success();
+    node = node->AsSeqRegExpNode()->on_success();
   }
   if (read_backward()) {
     length = -length;
@@ -2934,14 +2955,24 @@ int BoyerMooreLookahead::FindBestInterval(int max_number_of_chars,
 // max_lookahead (inclusive) measured from the current position.  If the
 // character at max_lookahead offset is not one of these characters, then we
 // can safely skip forwards by the number of characters in the range.
+// nibble_table is only used for SIMD variants and encodes the same information
+// as boolean_skip_table but in only 128 bits. It contains 16 bytes where the
+// index into the table represent low nibbles of a character, and the stored
+// byte is a bitset representing matching high nibbles. E.g. to store the
+// character 'b' (0x62) in the nibble table, we set the 6th bit in row 2.
 int BoyerMooreLookahead::GetSkipTable(
     int min_lookahead, int max_lookahead,
-    DirectHandle<ByteArray> boolean_skip_table) {
+    DirectHandle<ByteArray> boolean_skip_table,
+    DirectHandle<ByteArray> nibble_table) {
   const int kSkipArrayEntry = 0;
   const int kDontSkipArrayEntry = 1;
 
   std::memset(boolean_skip_table->begin(), kSkipArrayEntry,
               boolean_skip_table->length());
+  const bool fill_nibble_table = !nibble_table.is_null();
+  if (fill_nibble_table) {
+    std::memset(nibble_table->begin(), 0, nibble_table->length());
+  }
 
   for (int i = max_lookahead; i >= min_lookahead; i--) {
     BoyerMoorePositionInfo::Bitset bitset = bitmaps_->at(i)->raw_bitset();
@@ -2951,6 +2982,13 @@ int BoyerMooreLookahead::GetSkipTable(
     while ((j = BitsetFirstSetBit(bitset)) != -1) {
       DCHECK(bitset[j]);  // Sanity check.
       boolean_skip_table->set(j, kDontSkipArrayEntry);
+      if (fill_nibble_table) {
+        int lo_nibble = j & 0x0f;
+        int hi_nibble = (j >> 4) & 0x07;
+        int row = nibble_table->get(lo_nibble);
+        row |= 1 << hi_nibble;
+        nibble_table->set(lo_nibble, row);
+      }
       bitset.reset(j);
     }
   }
@@ -2998,6 +3036,7 @@ void BoyerMooreLookahead::EmitSkipInstructions(RegExpMacroAssembler* masm) {
   }
 
   if (found_single_character) {
+    // TODO(pthier): Add vectorized version.
     Label cont, again;
     masm->Bind(&again);
     masm->LoadCurrentCharacter(max_lookahead, &cont, true);
@@ -3016,17 +3055,19 @@ void BoyerMooreLookahead::EmitSkipInstructions(RegExpMacroAssembler* masm) {
   Factory* factory = masm->isolate()->factory();
   Handle<ByteArray> boolean_skip_table =
       factory->NewByteArray(kSize, AllocationType::kOld);
-  int skip_distance =
-      GetSkipTable(min_lookahead, max_lookahead, boolean_skip_table);
+  Handle<ByteArray> nibble_table;
+  const int skip_distance = max_lookahead + 1 - min_lookahead;
+  if (masm->SkipUntilBitInTableUseSimd(skip_distance)) {
+    // The current implementation is tailored specifically for 128-bit tables.
+    static_assert(kSize == 128);
+    nibble_table =
+        factory->NewByteArray(kSize / kBitsPerByte, AllocationType::kOld);
+  }
+  GetSkipTable(min_lookahead, max_lookahead, boolean_skip_table, nibble_table);
   DCHECK_NE(0, skip_distance);
 
-  Label cont, again;
-  masm->Bind(&again);
-  masm->LoadCurrentCharacter(max_lookahead, &cont, true);
-  masm->CheckBitInTable(boolean_skip_table, &cont);
-  masm->AdvanceCurrentPosition(skip_distance);
-  masm->GoTo(&again);
-  masm->Bind(&cont);
+  masm->SkipUntilBitInTable(max_lookahead, boolean_skip_table, nibble_table,
+                            skip_distance);
 }
 
 /* Code generation for choice nodes.
@@ -3319,7 +3360,7 @@ void ChoiceNode::EmitChoices(RegExpCompiler* compiler,
     }
     alt_gen->expects_preload = preload->preload_is_current_;
     bool generate_full_check_inline = false;
-    if (compiler->optimize() &&
+    if (v8_flags.regexp_optimization &&
         try_to_emit_quick_check_for_alternative(i == 0) &&
         alternative.node()->EmitQuickCheck(
             compiler, trace, &new_trace, preload->preload_has_checked_bounds_,
@@ -3649,16 +3690,23 @@ class EatsAtLeastPropagator : public AllStatic {
 
   static void VisitAction(ActionNode* that) {
     switch (that->action_type()) {
-      case ActionNode::BEGIN_POSITIVE_SUBMATCH:
+      case ActionNode::BEGIN_POSITIVE_SUBMATCH: {
+        // For a begin positive submatch we propagate the eats_at_least
+        // data from the successor of the success node, ignoring the body of
+        // the lookahead, which eats nothing, since it is a zero-width
+        // assertion.
+        // TODO(chromium:42201836) This is better than discarding all
+        // information when there is a positive lookahead, but it loses some
+        // information that could be useful, since the body of the lookahead
+        // could tell us something about how close to the end of the string we
+        // are.
+        that->set_eats_at_least_info(
+            *that->success_node()->on_success()->eats_at_least_info());
+        break;
+      }
       case ActionNode::POSITIVE_SUBMATCH_SUCCESS:
-        // We do not propagate eats_at_least data through positive lookarounds,
-        // because they rewind input.
-        // TODO(v8:11859) Potential approaches for fixing this include:
-        // 1. Add a dedicated choice node for positive lookaround, similar to
-        //    NegativeLookaroundChoiceNode.
-        // 2. Add an eats_at_least_inside_loop field to EatsAtLeastInfo, which
-        //    is <= eats_at_least_from_possibly_start, and use that value in
-        //    EatsAtLeastFromLoopEntry.
+        // We do not propagate eats_at_least data through positive submatch
+        // success because it rewinds input.
         DCHECK(that->eats_at_least_info()->IsZero());
         break;
       case ActionNode::SET_REGISTER_FOR_LOOP:
@@ -3901,6 +3949,7 @@ void ChoiceNode::FillInBMInfo(Isolate* isolate, int offset, int budget,
 void TextNode::FillInBMInfo(Isolate* isolate, int initial_offset, int budget,
                             BoyerMooreLookahead* bm, bool not_at_start) {
   if (initial_offset >= bm->length()) return;
+  if (read_backward()) return;
   int offset = initial_offset;
   int max_char = bm->max_char();
   for (int i = 0; i < elements()->length(); i++) {
@@ -4029,5 +4078,4 @@ void RegExpCompiler::ToNodeCheckForStackOverflow() {
   }
 }
 
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal

@@ -314,7 +314,7 @@ TEST_F(ElementsKindTest, JSArrayAddingElementsGeneralizingiFastSmiElements) {
 
   Handle<JSArray> array =
       factory->NewJSArray(ElementsKind::PACKED_SMI_ELEMENTS, 0, 0);
-  Handle<Map> previous_map(array->map(), i_isolate());
+  DirectHandle<Map> previous_map(array->map(), i_isolate());
   CHECK_EQ(PACKED_SMI_ELEMENTS, previous_map->elements_kind());
   CHECK_EQ(0, Smi::ToInt(array->length()));
 
@@ -330,7 +330,8 @@ TEST_F(ElementsKindTest, JSArrayAddingElementsGeneralizingiFastSmiElements) {
 
   // `delete array[0]` does not alter length, but changes the elments_kind
   name = MakeString("0");
-  CHECK(JSReceiver::DeletePropertyOrElement(array, name).FromMaybe(false));
+  CHECK(JSReceiver::DeletePropertyOrElement(i_isolate(), array, name)
+            .FromMaybe(false));
   CHECK_NE(array->map(), *previous_map);
   CHECK_EQ(HOLEY_SMI_ELEMENTS, array->map()->elements_kind());
   CHECK_EQ(1, Smi::ToInt(array->length()));
@@ -384,7 +385,7 @@ TEST_F(ElementsKindTest, JSArrayAddingElementsGeneralizingFastElements) {
 
   Handle<JSArray> array =
       factory->NewJSArray(ElementsKind::PACKED_ELEMENTS, 0, 0);
-  Handle<Map> previous_map(array->map(), i_isolate());
+  DirectHandle<Map> previous_map(array->map(), i_isolate());
   CHECK_EQ(PACKED_ELEMENTS, previous_map->elements_kind());
   CHECK_EQ(0, Smi::ToInt(array->length()));
 
@@ -400,7 +401,8 @@ TEST_F(ElementsKindTest, JSArrayAddingElementsGeneralizingFastElements) {
 
   // `delete array[0]` does not alter length, but changes the elments_kind
   name = MakeString("0");
-  CHECK(JSReceiver::DeletePropertyOrElement(array, name).FromMaybe(false));
+  CHECK(JSReceiver::DeletePropertyOrElement(i_isolate(), array, name)
+            .FromMaybe(false));
   CHECK_NE(array->map(), *previous_map);
   CHECK_EQ(HOLEY_ELEMENTS, array->map()->elements_kind());
   CHECK_EQ(1, Smi::ToInt(array->length()));
@@ -431,7 +433,7 @@ TEST_F(ElementsKindTest, JSArrayAddingElementsGeneralizingiFastDoubleElements) {
 
   Handle<JSArray> array =
       factory->NewJSArray(ElementsKind::PACKED_SMI_ELEMENTS, 0, 0);
-  Handle<Map> previous_map(array->map(), i_isolate());
+  DirectHandle<Map> previous_map(array->map(), i_isolate());
 
   // `array[0] = value_double` changes |elements_kind| to PACKED_DOUBLE_ELEMENTS
   name = MakeString("0");
@@ -454,7 +456,8 @@ TEST_F(ElementsKindTest, JSArrayAddingElementsGeneralizingiFastDoubleElements) {
 
   // `delete array[0]` does not alter length, but changes the elments_kind
   name = MakeString("0");
-  CHECK(JSReceiver::DeletePropertyOrElement(array, name).FromMaybe(false));
+  CHECK(JSReceiver::DeletePropertyOrElement(i_isolate(), array, name)
+            .FromMaybe(false));
   CHECK_NE(array->map(), *previous_map);
   CHECK_EQ(HOLEY_DOUBLE_ELEMENTS, array->map()->elements_kind());
   CHECK_EQ(2, Smi::ToInt(array->length()));

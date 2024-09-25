@@ -387,6 +387,7 @@ class OperandGeneratorT : public Adapter {
             }
           case Kind::kHeapObject:
           case Kind::kCompressedHeapObject:
+          case Kind::kTrustedHeapObject:
             return Constant(constant->handle(),
                             constant->kind == Kind::kCompressedHeapObject);
           case Kind::kExternal:
@@ -394,9 +395,9 @@ class OperandGeneratorT : public Adapter {
           case Kind::kNumber:
             return Constant(constant->number());
           case Kind::kFloat32:
-            return Constant(constant->float32_preserve_nan());
+            return Constant(constant->float32());
           case Kind::kFloat64:
-            return Constant(constant->float64_preserve_nan());
+            return Constant(constant->float64());
           case Kind::kTaggedIndex: {
             // Unencoded index value.
             intptr_t value = static_cast<intptr_t>(constant->tagged_index());
@@ -423,6 +424,12 @@ class OperandGeneratorT : public Adapter {
             return Constant(RelocatablePtrConstantInfo(
                 base::checked_cast<int32_t>(constant->integral()),
                 RelocInfo::WASM_CANONICAL_SIG_ID));
+          case Kind::kRelocatableWasmIndirectCallTarget:
+            uint64_t value = constant->integral();
+            using constant_type = std::conditional_t<Is64(), int64_t, int32_t>;
+            return Constant(RelocatablePtrConstantInfo(
+                base::checked_cast<constant_type>(value),
+                RelocInfo::WASM_INDIRECT_CALL_TARGET));
         }
       }
       UNREACHABLE();

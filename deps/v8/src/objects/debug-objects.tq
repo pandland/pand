@@ -42,18 +42,11 @@ extern class DebugInfo extends Struct {
   // The original uninstrumented bytecode array for functions with break
   // points - the instrumented bytecode is held in the shared function info.
   // Can contain Smi::zero() if cleared.
-  @ifnot(V8_ENABLE_SANDBOX)
-      @cppAcquireLoad @cppReleaseStore original_bytecode_array: Smi
-      |BytecodeArray;
-  @if(V8_ENABLE_SANDBOX) original_bytecode_array:
-      IndirectPointer<BytecodeArray>;
+  original_bytecode_array: TrustedPointer<BytecodeArray>;
   // The debug instrumented bytecode array for functions with break points
   // - also pointed to by the shared function info.
   // Can contain Smi::zero() if cleared.
-  @ifnot(V8_ENABLE_SANDBOX)
-      @cppAcquireLoad @cppReleaseStore debug_bytecode_array: Smi|BytecodeArray;
-  @if(V8_ENABLE_SANDBOX) debug_bytecode_array:
-      IndirectPointer<BytecodeArray>;
+  debug_bytecode_array: TrustedPointer<BytecodeArray>;
 }
 
 @export
@@ -86,6 +79,13 @@ extern class StackFrameInfo extends Struct {
   shared_or_script: SharedFunctionInfo|Script;
   function_name: String;
   flags: SmiTagged<StackFrameInfoFlags>;
+}
+
+extern class StackTraceInfo extends Struct {
+  // Unique ID of this stack trace.
+  id: Smi;
+  // FixedArray of StackFrameInfos.
+  frames: FixedArray;
 }
 
 // This struct is used by V8 as error_data_symbol on JSError

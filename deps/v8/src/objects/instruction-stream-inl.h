@@ -5,7 +5,10 @@
 #ifndef V8_OBJECTS_INSTRUCTION_STREAM_INL_H_
 #define V8_OBJECTS_INSTRUCTION_STREAM_INL_H_
 
+#include <optional>
+
 #include "src/common/ptr-compr-inl.h"
+#include "src/heap/heap-layout-inl.h"
 #include "src/heap/heap-write-barrier-inl.h"
 #include "src/objects/code.h"
 #include "src/objects/instruction-stream.h"
@@ -14,8 +17,7 @@
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
 
-namespace v8 {
-namespace internal {
+namespace v8::internal {
 
 OBJECT_CONSTRUCTORS_IMPL(InstructionStream, TrustedObject)
 NEVER_READ_ONLY_SPACE_IMPL(InstructionStream)
@@ -60,7 +62,7 @@ Tagged<InstructionStream> InstructionStream::Initialize(
     writable_allocation.WriteHeaderSlot<Smi, kCodeOffset>(Smi::zero(),
                                                           kReleaseStore);
 
-    DCHECK(!ObjectInYoungGeneration(reloc_info));
+    DCHECK(!HeapLayout::InYoungGeneration(reloc_info));
     writable_allocation.WriteProtectedPointerHeaderSlot<TrustedByteArray,
                                                         kRelocationInfoOffset>(
         reloc_info, kRelaxedStore);
@@ -119,7 +121,7 @@ void InstructionStream::Finalize(Tagged<Code> code,
                                  Tagged<TrustedByteArray> reloc_info,
                                  CodeDesc desc, Heap* heap) {
   DisallowGarbageCollection no_gc;
-  base::Optional<WriteBarrierPromise> promise;
+  std::optional<WriteBarrierPromise> promise;
 
   // Copy the relocation info first before we unlock the Jit allocation.
   // TODO(sroettger): reloc info should live in protected memory.
@@ -173,8 +175,8 @@ Address InstructionStream::body_end() const {
 
 Tagged<Object> InstructionStream::raw_code(AcquireLoadTag tag) const {
   Tagged<Object> value = RawProtectedPointerField(kCodeOffset).Acquire_Load();
-  DCHECK(!ObjectInYoungGeneration(value));
-  DCHECK(IsSmi(value) || IsTrustedSpaceObject(Cast<HeapObject>(value)));
+  DCHECK(!HeapLayout::InYoungGeneration(value));
+  DCHECK(IsSmi(value) || HeapLayout::InTrustedSpace(Cast<HeapObject>(value)));
   return value;
 }
 
@@ -183,8 +185,8 @@ Tagged<Code> InstructionStream::code(AcquireLoadTag tag) const {
 }
 
 void InstructionStream::set_code(Tagged<Code> value, ReleaseStoreTag tag) {
-  DCHECK(!ObjectInYoungGeneration(value));
-  DCHECK(IsTrustedSpaceObject(value));
+  DCHECK(!HeapLayout::InYoungGeneration(value));
+  DCHECK(HeapLayout::InTrustedSpace(value));
   WriteProtectedPointerField(kCodeOffset, value, tag);
   CONDITIONAL_PROTECTED_POINTER_WRITE_BARRIER(*this, kCodeOffset, value,
                                               UPDATE_WRITE_BARRIER);
@@ -274,8 +276,7 @@ PtrComprCageBase InstructionStream::main_cage_base() {
 #endif
 }
 
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal
 
 #include "src/objects/object-macros-undef.h"
 

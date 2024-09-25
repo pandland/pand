@@ -803,9 +803,15 @@ class MjsunitImmediatesPrinter {
     out_ << ",";
   }
 
-  // TODO(mliedtke): This is used for br_on_cast[_fail] and currently does not
-  // create a valid br_on_cast instruction.
   void ValueType(HeapTypeImmediate& imm, bool is_nullable) {
+    if (owner_->current_opcode_ == kExprBrOnCast ||
+        owner_->current_opcode_ == kExprBrOnCastFail) {
+      // We somewhat incorrectly use the {ValueType} callback rather than
+      // {HeapType()} for br_on_cast[_fail], because that's convenient
+      // for disassembling to the text format. For module builder output,
+      // fix that hack here, by dispatching back to {HeapType()}.
+      return HeapType(imm);
+    }
     out_ << " ";
     names()->PrintValueType(
         out_,
@@ -813,6 +819,14 @@ class MjsunitImmediatesPrinter {
                                 is_nullable ? kNullable : kNonNullable),
         kEmitWireBytes);
     out_ << ",";
+  }
+
+  void BrOnCastFlags(BrOnCastImmediate& flags) {
+    out_ << " 0b";
+    out_ << ((flags.raw_value & 2) ? "1" : "0");
+    out_ << ((flags.raw_value & 1) ? "1" : "0");
+    out_ << " /* " << (flags.flags.src_is_null ? "" : "non-") << "nullable -> "
+         << (flags.flags.res_is_null ? "" : "non-") << "nullable */,";
   }
 
   void BranchDepth(BranchDepthImmediate& imm) { WriteUnsignedLEB(imm.depth); }
@@ -887,7 +901,7 @@ class MjsunitImmediatesPrinter {
       WriteUnsignedLEB(align);
     }
     if (imm.mem_index < owner_->module_->memories.size() &&
-        owner_->module_->memories[imm.mem_index].is_memory64) {
+        owner_->module_->memories[imm.mem_index].is_memory64()) {
       WriteLEB64(imm.offset);
     } else {
       DCHECK_LE(imm.offset, std::numeric_limits<uint32_t>::max());
@@ -1111,7 +1125,7 @@ class MjsunitModuleDis {
             "that can be\n"
             "// found in the LICENSE file.\n"
             "\n"
-            "// Flags: --wasm-staging\n"
+            "// Flags: --wasm-staging --wasm-inlining-call-indirect\n"
             "\n"
             "d8.file.execute('test/mjsunit/wasm/wasm-module-builder.js');\n"
             "\n"
@@ -1319,7 +1333,7 @@ class MjsunitModuleDis {
             out_ << "undefined, ";
           }
           out_ << (memory.is_shared ? "true" : "false");
-          if (memory.is_memory64) out_ << ", true";
+          if (memory.is_memory64()) out_ << ", true";
           break;
         }
         case kExternalTag: {
@@ -1406,7 +1420,7 @@ class MjsunitModuleDis {
       if (memory.imported) continue;
       out_ << "let ";
       names()->PrintMemoryName(out_, memory.index);
-      if (memory.is_memory64) {
+      if (memory.is_memory64()) {
         out_ << " = builder.addMemory64(";
       } else {
         out_ << " = builder.addMemory(";
@@ -1519,9 +1533,10 @@ class MjsunitModuleDis {
         out_ << " = builder.addDeclarativeElementSegment(";
       }
       out_ << "[";
-      ModuleDecoderImpl decoder(WasmEnabledFeatures::All(),
-                                wire_bytes_.module_bytes(),
-                                ModuleOrigin::kWasmOrigin);
+      WasmDetectedFeatures unused_detected_features;
+      ModuleDecoderImpl decoder(
+          WasmEnabledFeatures::All(), wire_bytes_.module_bytes(),
+          ModuleOrigin::kWasmOrigin, &unused_detected_features);
       // This implementation detail is load-bearing: if we simply let the
       // {decoder} start at this offset, it could produce WireBytesRefs that
       // start at offset 0, which violates DCHECK-guarded assumptions.

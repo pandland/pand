@@ -4,17 +4,17 @@
 
 #include "src/torque/csa-generator.h"
 
+#include <optional>
+
 #include "src/common/globals.h"
 #include "src/torque/global-context.h"
 #include "src/torque/type-oracle.h"
 #include "src/torque/types.h"
 #include "src/torque/utils.h"
 
-namespace v8 {
-namespace internal {
-namespace torque {
+namespace v8::internal::torque {
 
-base::Optional<Stack<std::string>> CSAGenerator::EmitGraph(
+std::optional<Stack<std::string>> CSAGenerator::EmitGraph(
     Stack<std::string> parameters) {
   for (BottomOffset i = {0}; i < parameters.AboveTop(); ++i) {
     SetDefinitionVariable(DefinitionLocation::Parameter(i.offset),
@@ -63,7 +63,7 @@ base::Optional<Stack<std::string>> CSAGenerator::EmitGraph(
     out() << "\n";
     return EmitBlock(*cfg_.end());
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 Stack<std::string> CSAGenerator::EmitBlock(const Block* block) {
@@ -276,6 +276,8 @@ void CSAGenerator::EmitInstruction(const CallIntrinsicInstruction& instruction,
       out() << "ca_.UintPtrConstant";
     } else if (return_type->IsSubtypeOf(TypeOracle::GetInt32Type())) {
       out() << "ca_.Int32Constant";
+    } else if (return_type->IsSubtypeOf(TypeOracle::GetUint8Type())) {
+      out() << "TNode<Uint8T>::UncheckedCast(ca_.Uint32Constant";
     } else if (return_type->IsSubtypeOf(TypeOracle::GetUint32Type())) {
       out() << "ca_.Uint32Constant";
     } else if (return_type->IsSubtypeOf(TypeOracle::GetInt64Type())) {
@@ -301,6 +303,9 @@ void CSAGenerator::EmitInstruction(const CallIntrinsicInstruction& instruction,
   PrintCommaSeparatedList(out(), args);
   if (instruction.intrinsic->ExternalName() == "%FromConstexpr") {
     out() << ")";
+    if (return_type->IsSubtypeOf(TypeOracle::GetUint8Type())) {
+      out() << ")";
+    }
   }
   if (return_type->StructSupertype()) {
     out() << ").Flatten();\n";
@@ -643,7 +648,7 @@ void CSAGenerator::EmitInstruction(
 }
 
 std::string CSAGenerator::PreCallableExceptionPreparation(
-    base::Optional<Block*> catch_block) {
+    std::optional<Block*> catch_block) {
   std::string catch_name;
   if (catch_block) {
     catch_name = FreshCatchName();
@@ -657,8 +662,8 @@ std::string CSAGenerator::PreCallableExceptionPreparation(
 
 void CSAGenerator::PostCallableExceptionPreparation(
     const std::string& catch_name, const Type* return_type,
-    base::Optional<Block*> catch_block, Stack<std::string>* stack,
-    const base::Optional<DefinitionLocation>& exception_object_definition) {
+    std::optional<Block*> catch_block, Stack<std::string>* stack,
+    const std::optional<DefinitionLocation>& exception_object_definition) {
   if (catch_block) {
     DCHECK(exception_object_definition);
     std::string block_name = BlockName(*catch_block);
@@ -1060,6 +1065,4 @@ void CSAGenerator::EmitCSAValue(VisitResult result,
   }
 }
 
-}  // namespace torque
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal::torque

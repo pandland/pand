@@ -33,3 +33,11 @@ _
 sample
 pand
 build/
+
+# v8 related:
+_/  
+deps/v8
+deps/.cipd
+deps/depot_tools
+deps/.gclient*
+deps/.gcs_entries

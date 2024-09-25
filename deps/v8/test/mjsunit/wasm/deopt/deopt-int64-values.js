@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // Flags: --wasm-deopt --allow-natives-syntax --turboshaft-wasm
-// Flags: --experimental-wasm-inlining --liftoff
+// Flags: --wasm-inlining --liftoff
 // Flags: --turboshaft-wasm-instruction-selection-staged --no-jit-fuzzing
 
 // Test for different types of stack, local and literal values.
@@ -66,12 +66,12 @@ d8.file.execute("test/mjsunit/wasm/wasm-module-builder.js");
   assertEquals(expected, wasm.main(argumentValue, wasm.nop1));
   %WasmTierUpFunction(wasm.main);
   assertEquals(expected, wasm.main(argumentValue, wasm.nop1));
-  if (%IsolateCountForTesting() == 1) {
+  if (%IsWasmTieringPredictable()) {
     assertTrue(%IsTurboFanFunction(wasm.main));
   }
   // Deopt happened, the result should still be the same.
   assertEquals(expected, wasm.main(argumentValue, wasm.nop2));
-  if (%IsolateCountForTesting() == 1) {
+  if (%IsWasmTieringPredictable()) {
     assertFalse(%IsTurboFanFunction(wasm.main));
   }
 })();
@@ -109,17 +109,17 @@ d8.file.execute("test/mjsunit/wasm/wasm-module-builder.js");
   assertEquals(43n, wasm.main(1n, 42n, wasm.add));
   %WasmTierUpFunction(wasm.main);
   assertEquals(43n, wasm.main(1n, 42n, wasm.add));
-  if (%IsolateCountForTesting() == 1) {
+  if (%IsWasmTieringPredictable()) {
     assertTrue(%IsTurboFanFunction(wasm.main));
   }
   assertEquals(-41n, wasm.main(1n, 42n, wasm.sub));
-  if (%IsolateCountForTesting() == 1) {
+  if (%IsWasmTieringPredictable()) {
     assertFalse(%IsTurboFanFunction(wasm.main));
   }
   %WasmTierUpFunction(wasm.main);
   assertEquals(43n, wasm.main(1n, 42n, wasm.add));
   assertEquals(-41n, wasm.main(1n, 42n, wasm.sub));
-  if (%IsolateCountForTesting() == 1) {
+  if (%IsWasmTieringPredictable()) {
     assertTrue(%IsTurboFanFunction(wasm.main));
   }
 })();

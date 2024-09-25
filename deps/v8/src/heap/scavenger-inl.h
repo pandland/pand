@@ -113,8 +113,8 @@ bool Scavenger::MigrateObject(Tagged<Map> map, Tagged<HeapObject> source,
       (promotion_heap_choice != kPromoteIntoSharedHeap || mark_shared_heap_)) {
     heap()->incremental_marking()->TransferColor(source, target);
   }
-  pretenuring_handler_->UpdateAllocationSite(map, source,
-                                             &local_pretenuring_feedback_);
+  PretenuringHandler::UpdateAllocationSite(heap_, map, source,
+                                           &local_pretenuring_feedback_);
 
   return true;
 }
@@ -147,7 +147,7 @@ CopyAndForwardResult Scavenger::SemiSpaceCopyObject(
     }
     UpdateHeapObjectReferenceSlot(slot, target);
     if (object_fields == ObjectFields::kMaybePointers) {
-      copied_list_local_.Push(ObjectAndSize(target, object_size));
+      local_copied_list_.Push(ObjectAndSize(target, object_size));
     }
     copied_size_ += object_size;
     return CopyAndForwardResult::SUCCESS_YOUNG_GENERATION;
@@ -167,17 +167,9 @@ CopyAndForwardResult Scavenger::PromoteObject(Tagged<Map> map,
                 "Only FullHeapObjectSlot and HeapObjectSlot are expected here");
   DCHECK_GE(object_size, Heap::kMinObjectSizeInTaggedWords * kTaggedSize);
   AllocationAlignment alignment = HeapObject::RequiredAlignment(map);
-  AllocationResult allocation;
-  switch (promotion_heap_choice) {
-    case kPromoteIntoLocalHeap:
-      allocation = allocator_.Allocate(OLD_SPACE, object_size, alignment);
-      break;
-    case kPromoteIntoSharedHeap:
-      DCHECK_NOT_NULL(shared_old_allocator_);
-      allocation = shared_old_allocator_->AllocateRaw(object_size, alignment,
-                                                      AllocationOrigin::kGC);
-      break;
-  }
+  AllocationResult allocation = allocator_.Allocate(
+      promotion_heap_choice == kPromoteIntoLocalHeap ? OLD_SPACE : SHARED_SPACE,
+      object_size, alignment);
 
   Tagged<HeapObject> target;
   if (allocation.To(&target)) {
@@ -185,14 +177,10 @@ CopyAndForwardResult Scavenger::PromoteObject(Tagged<Map> map,
     const bool self_success =
         MigrateObject(map, object, target, object_size, promotion_heap_choice);
     if (!self_success) {
-      switch (promotion_heap_choice) {
-        case kPromoteIntoLocalHeap:
-          allocator_.FreeLast(OLD_SPACE, target, object_size);
-          break;
-        case kPromoteIntoSharedHeap:
-          heap()->CreateFillerObjectAt(target.address(), object_size);
-          break;
-      }
+      allocator_.FreeLast(promotion_heap_choice == kPromoteIntoLocalHeap
+                              ? OLD_SPACE
+                              : SHARED_SPACE,
+                          target, object_size);
 
       MapWord map_word = object->map_word(kAcquireLoad);
       UpdateHeapObjectReferenceSlot(slot, map_word.ToForwardingAddress(object));
@@ -206,7 +194,7 @@ CopyAndForwardResult Scavenger::PromoteObject(Tagged<Map> map,
     // During incremental marking we want to push every object in order to
     // record slots for map words. Necessary for map space compaction.
     if (object_fields == ObjectFields::kMaybePointers || is_compacting_) {
-      promotion_list_local_.PushRegularObject(target, object_size);
+      local_promotion_list_.PushRegularObject(target, object_size);
     }
     promoted_size_ += object_size;
     return CopyAndForwardResult::SUCCESS_OLD_GENERATION;
@@ -223,18 +211,15 @@ SlotCallbackResult Scavenger::RememberedSetEntryNeeded(
 
 bool Scavenger::HandleLargeObject(Tagged<Map> map, Tagged<HeapObject> object,
                                   int object_size, ObjectFields object_fields) {
-  // TODO(hpayer): Make this check size based, i.e.
-  // object_size > kMaxRegularHeapObjectSize
-  if (V8_UNLIKELY(
-          MemoryChunk::FromHeapObject(object)->InNewLargeObjectSpace())) {
-    DCHECK_EQ(NEW_LO_SPACE,
-              MutablePageMetadata::FromHeapObject(object)->owner_identity());
+  if (NEW_LO_SPACE ==
+      MutablePageMetadata::FromHeapObject(object)->owner_identity()) {
+    DCHECK(MemoryChunk::FromHeapObject(object)->InNewLargeObjectSpace());
     if (object->release_compare_and_swap_map_word_forwarded(
             MapWord::FromMap(map), object)) {
-      surviving_new_large_objects_.insert({object, map});
+      local_surviving_new_large_objects_.insert({object, map});
       promoted_size_ += object_size;
       if (object_fields == ObjectFields::kMaybePointers) {
-        promotion_list_local_.PushLargeObject(object, map, object_size);
+        local_promotion_list_.PushLargeObject(object, map, object_size);
       }
     }
     return true;

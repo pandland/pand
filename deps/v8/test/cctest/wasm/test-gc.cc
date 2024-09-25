@@ -38,6 +38,10 @@ class WasmGCTester {
         flag_wasm_dynamic_tiering(&v8::internal::v8_flags.wasm_dynamic_tiering,
                                   v8::internal::v8_flags.liftoff_only != true),
         flag_tierup(&v8::internal::v8_flags.wasm_tier_up, false),
+        // Manually apply flag implication by disabling deopts in case of
+        // --no-liftoff.
+        flag_wasm_deopt(&v8::internal::v8_flags.wasm_deopt,
+                        v8_flags.wasm_deopt && v8_flags.liftoff),
         zone_(&allocator, ZONE_NAME),
         builder_(&zone_),
         isolate_(CcTest::InitIsolateOnce()),
@@ -207,6 +211,7 @@ class WasmGCTester {
   const FlagScope<bool> flag_liftoff_only;
   const FlagScope<bool> flag_wasm_dynamic_tiering;
   const FlagScope<bool> flag_tierup;
+  const FlagScope<bool> flag_wasm_deopt;
 
   uint8_t DefineFunctionImpl(WasmFunctionBuilder* fun,
                              std::initializer_list<ValueType> locals,
@@ -248,7 +253,7 @@ class WasmGCTester {
                         CWasmArgumentsPacker* packer) {
     WasmCodeRefScope code_ref_scope;
     const WasmModule* module = trusted_instance_data_->module();
-    Address wasm_call_target =
+    WasmCodePointer wasm_call_target =
         trusted_instance_data_->GetCallTarget(function_index);
     DirectHandle<Object> object_ref = instance_object_;
     DirectHandle<Code> c_wasm_entry =

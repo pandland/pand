@@ -39,9 +39,16 @@
 #include "test/common/value-helper.h"
 #include "test/common/wasm/flag-utils.h"
 
+#if V8_ENABLE_DRUMBRAKE
+#include "src/wasm/interpreter/wasm-interpreter.h"
+#endif  // V8_ENABLE_DRUMBRAKE
+
 namespace v8::internal::wasm {
 
 enum class TestExecutionTier : int8_t {
+#if V8_ENABLE_DRUMBRAKE
+  kInterpreter = static_cast<int8_t>(ExecutionTier::kInterpreter),
+#endif  // V8_ENABLE_DRUMBRAKE
   kLiftoff = static_cast<int8_t>(ExecutionTier::kLiftoff),
   kTurbofan = static_cast<int8_t>(ExecutionTier::kTurbofan),
   kLiftoffForFuzzing
@@ -50,8 +57,6 @@ static_assert(
     std::is_same<std::underlying_type<ExecutionTier>::type,
                  std::underlying_type<TestExecutionTier>::type>::value,
     "enum types match");
-
-enum TestingModuleMemoryType { kMemory32, kMemory64 };
 
 using base::ReadLittleEndianValue;
 using base::WriteLittleEndianValue;
@@ -106,15 +111,15 @@ class TestingModuleBuilder {
   ~TestingModuleBuilder();
 
   uint8_t* AddMemory(uint32_t size, SharedFlag shared = SharedFlag::kNotShared,
-                     TestingModuleMemoryType = kMemory32,
+                     IndexType index_type = wasm::IndexType::kI32,
                      std::optional<size_t> max_size = {});
 
   size_t CodeTableLength() const { return native_module_->num_functions(); }
 
   template <typename T>
   T* AddMemoryElems(uint32_t count,
-                    TestingModuleMemoryType mem_type = kMemory32) {
-    AddMemory(count * sizeof(T), SharedFlag::kNotShared, mem_type);
+                    IndexType index_type = wasm::IndexType::kI32) {
+    AddMemory(count * sizeof(T), SharedFlag::kNotShared, index_type);
     return raw_mem_start<T>();
   }
 
@@ -251,6 +256,10 @@ class TestingModuleBuilder {
 
   ExecutionTier execution_tier() const {
     switch (execution_tier_) {
+#if V8_ENABLE_DRUMBRAKE
+      case TestExecutionTier::kInterpreter:
+        return ExecutionTier::kInterpreter;
+#endif  // V8_ENABLE_DRUMBRAKE
       case TestExecutionTier::kTurbofan:
         return ExecutionTier::kTurbofan;
       case TestExecutionTier::kLiftoff:
@@ -582,12 +591,24 @@ class WasmRunner : public WasmRunnerBase {
 };
 
 // A macro to define tests that run in different engine configurations.
+#if V8_ENABLE_DRUMBRAKE
+#define TEST_IF_DRUMBRAKE(name)                      \
+  TEST(RunWasmInterpreter_##name) {                  \
+    FLAG_SCOPE(wasm_jitless);                        \
+    WasmInterpreterThread::Initialize();             \
+    RunWasm_##name(TestExecutionTier::kInterpreter); \
+    WasmInterpreterThread::Terminate();              \
+  }
+#else
+#define TEST_IF_DRUMBRAKE(name)
+#endif  // V8_ENABLE_DRUMBRAKE
 #define WASM_EXEC_TEST(name)                                                   \
   void RunWasm_##name(TestExecutionTier execution_tier);                       \
   TEST(RunWasmTurbofan_##name) {                                               \
     RunWasm_##name(TestExecutionTier::kTurbofan);                              \
   }                                                                            \
   TEST(RunWasmLiftoff_##name) { RunWasm_##name(TestExecutionTier::kLiftoff); } \
+  TEST_IF_DRUMBRAKE(name)                                                      \
   void RunWasm_##name(TestExecutionTier execution_tier)
 
 #define UNINITIALIZED_WASM_EXEC_TEST(name)               \

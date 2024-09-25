@@ -377,7 +377,7 @@ V8_WARN_UNUSED_RESULT MaybeHandle<Object> Invoke(Isolate* isolate,
       v8::Context::AbortScriptExecutionCallback callback =
           v8::ToCData<v8::Context::AbortScriptExecutionCallback,
                       kApiAbortScriptExecutionCallbackTag>(
-              context->script_execution_callback());
+              isolate, context->script_execution_callback());
       v8::Isolate* api_isolate = reinterpret_cast<v8::Isolate*>(isolate);
       v8::Local<v8::Context> api_context = v8::Utils::ToLocal(context);
       callback(api_isolate, api_context);
@@ -591,7 +591,7 @@ static_assert(sizeof(StackHandlerMarker) == StackHandlerConstants::kSize);
 
 #if V8_ENABLE_WEBASSEMBLY
 void Execution::CallWasm(Isolate* isolate, DirectHandle<Code> wrapper_code,
-                         Address wasm_call_target,
+                         WasmCodePointer wasm_call_target,
                          DirectHandle<Object> object_ref, Address packed_args) {
   using WasmEntryStub = GeneratedCode<Address(
       Address target, Address object_ref, Address argv, Address c_entry_fp)>;

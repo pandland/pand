@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <optional>
 
 #include "src/base/utils/random-number-generator.h"
 #include "src/codegen/assembler-inl.h"
@@ -464,12 +465,12 @@ class TestEnvironment : public HandleAndZoneScope {
               GetRegConfig()->num_allocatable_general_registers() - 2);
 
     GenerateLayout(setup_layout_, allocated_slots_in_, &test_signature);
-    test_descriptor_ = MakeCallDescriptor(test_signature.Build());
+    test_descriptor_ = MakeCallDescriptor(test_signature.Get());
 
     if (layout_mode_ == kChangeLayout) {
       GenerateLayout(teardown_layout_, allocated_slots_out_,
                      &teardown_signature);
-      teardown_descriptor_ = MakeCallDescriptor(teardown_signature.Build());
+      teardown_descriptor_ = MakeCallDescriptor(teardown_signature.Get());
     }
     // Else, we just reuse the layout and signature of the setup function for
     // the teardown function since they are the same.
@@ -583,7 +584,7 @@ class TestEnvironment : public HandleAndZoneScope {
     // Initialise random constants.
 
     // While constants do not know about Smis, we need to be able to
-    // differentiate between a pointer to a HeapNumber and a integer. For this
+    // differentiate between a pointer to a HeapNumber and an integer. For this
     // reason, we make sure all integers are Smis, including constants.
     for (int i = 0; i < kSmiConstantCount; i++) {
       intptr_t smi_value = static_cast<intptr_t>(
@@ -787,18 +788,18 @@ class TestEnvironment : public HandleAndZoneScope {
     if (from.IsConstant()) {
       Constant constant = instructions_.GetConstant(
           ConstantOperand::cast(from).virtual_register());
-      Handle<Object> constant_value;
+      DirectHandle<Object> constant_value;
       switch (constant.type()) {
         case Constant::kInt32:
           constant_value =
-              Handle<Smi>(Tagged<Smi>(static_cast<Address>(
-                              static_cast<intptr_t>(constant.ToInt32()))),
-                          main_isolate());
+              direct_handle(Tagged<Smi>(static_cast<Address>(
+                                static_cast<intptr_t>(constant.ToInt32()))),
+                            main_isolate());
           break;
         case Constant::kInt64:
-          constant_value =
-              Handle<Smi>(Tagged<Smi>(static_cast<Address>(constant.ToInt64())),
-                          main_isolate());
+          constant_value = direct_handle(
+              Tagged<Smi>(static_cast<Address>(constant.ToInt64())),
+              main_isolate());
           break;
         case Constant::kFloat32:
           constant_value = main_isolate()->factory()->NewHeapNumber(
@@ -1155,7 +1156,7 @@ class CodeGeneratorTester {
     generator_ = new CodeGenerator(
         environment->main_zone(), &frame_, &linkage_,
         environment->instructions(), &info_, environment->main_isolate(),
-        base::Optional<OsrHelper>(), kNoSourcePosition, nullptr,
+        std::optional<OsrHelper>(), kNoSourcePosition, nullptr,
         AssemblerOptions::Default(environment->main_isolate()),
         Builtin::kNoBuiltinId, kMaxUnoptimizedFrameHeight,
         kMaxPushedArgumentCount);
@@ -1227,8 +1228,8 @@ class CodeGeneratorTester {
                                  int first_unused_stack_slot,
                                  CodeGeneratorTester::PushTypeFlag push_type) {
     generator_->AssembleTailCallBeforeGap(instr, first_unused_stack_slot);
-#if defined(V8_TARGET_ARCH_ARM) || defined(V8_TARGET_ARCH_S390) || \
-    defined(V8_TARGET_ARCH_PPC) || defined(V8_TARGET_ARCH_PPC64)
+#if defined(V8_TARGET_ARCH_ARM) || defined(V8_TARGET_ARCH_S390X) || \
+    defined(V8_TARGET_ARCH_PPC64)
     // Only folding register pushes is supported on ARM.
     bool supported =
         ((int{push_type} & CodeGenerator::kRegisterPush) == push_type);
@@ -1295,7 +1296,7 @@ class CodeGeneratorTester {
     InstructionSequence* sequence = generator_->instructions();
 
     sequence->StartBlock(RpoNumber::FromInt(0));
-    // The environment expects this code to tail-call to it's first parameter
+    // The environment expects this code to tail-call to its first parameter
     // placed in `kReturnRegister0`.
     sequence->AddInstruction(Instruction::New(zone_, kArchPrepareTailCall));
 
@@ -1449,7 +1450,7 @@ TEST(FuzzAssembleMoveAndSwap) {
   TestEnvironment env;
 
   Handle<FixedArray> state_in = env.GenerateInitialState();
-  Handle<FixedArray> expected =
+  DirectHandle<FixedArray> expected =
       env.main_isolate()->factory()->NewFixedArray(state_in->length());
 
   // Test small and potentially large ranges separately.
@@ -1631,8 +1632,8 @@ std::shared_ptr<wasm::NativeModule> AllocateNativeModule(Isolate* isolate,
   // WasmCallDescriptor assumes that code is on the native heap and not
   // within a code object.
   auto native_module = wasm::GetWasmEngine()->NewNativeModule(
-      isolate, wasm::WasmEnabledFeatures::All(), wasm::CompileTimeImports{},
-      std::move(module), code_size);
+      isolate, wasm::WasmEnabledFeatures::All(), wasm::WasmDetectedFeatures{},
+      wasm::CompileTimeImports{}, std::move(module), code_size);
   native_module->SetWireBytes({});
   return native_module;
 }
@@ -1663,8 +1664,7 @@ TEST(Regress_1171759) {
 
   builder.AddReturn(wasm::ValueType::For(MachineType::Int32()));
 
-  CallDescriptor* desc =
-      compiler::GetWasmCallDescriptor(&zone, builder.Build());
+  CallDescriptor* desc = compiler::GetWasmCallDescriptor(&zone, builder.Get());
 
   HandleAndZoneScope handles(kCompressGraphZone);
   RawMachineAssembler m(handles.main_isolate(),
@@ -1685,11 +1685,12 @@ TEST(Regress_1171759) {
   std::shared_ptr<wasm::NativeModule> module =
       AllocateNativeModule(handles.main_isolate(), code->instruction_size());
   wasm::WasmCodeRefScope wasm_code_ref_scope;
-  uint8_t* code_start = module->AddCodeForTesting(code)->instructions().begin();
+  wasm::WasmCode* wasm_code = module->AddCodeForTesting(code);
+  WasmCodePointer code_pointer = wasm_code->code_pointer();
 
   // Generate a minimal calling function, to push stack arguments.
   RawMachineAssemblerTester<int32_t> mt;
-  Node* function = mt.PointerConstant(code_start);
+  Node* function = mt.IntPtrConstant(code_pointer);
   Node* dummy_context = mt.PointerConstant(nullptr);
   Node* double_slot = mt.Float64Constant(0);
   Node* single_slot_that_creates_gap = mt.Float32Constant(0);

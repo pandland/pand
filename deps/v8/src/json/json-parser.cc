@@ -4,6 +4,8 @@
 
 #include "src/json/json-parser.h"
 
+#include <optional>
+
 #include "src/base/strings.h"
 #include "src/builtins/builtins.h"
 #include "src/common/assert-scope.h"
@@ -280,7 +282,7 @@ bool JsonParseInternalizer::RecurseAndApply(Handle<JSReceiver> holder,
       false);
   Maybe<bool> change_result = Nothing<bool>();
   if (IsUndefined(*result, isolate_)) {
-    change_result = JSReceiver::DeletePropertyOrElement(holder, name,
+    change_result = JSReceiver::DeletePropertyOrElement(isolate_, holder, name,
                                                         LanguageMode::kSloppy);
   } else {
     PropertyDescriptor desc;
@@ -357,7 +359,7 @@ bool JsonParser<Char>::IsSpecialString() {
 
 template <typename Char>
 MessageTemplate JsonParser<Char>::GetErrorMessageWithEllipses(
-    Handle<Object>& arg, Handle<Object>& arg2, int pos) {
+    DirectHandle<Object>& arg, DirectHandle<Object>& arg2, int pos) {
   MessageTemplate message;
   Factory* factory = this->factory();
   arg = factory->LookupSingleCharacterStringFromCode(*cursor_);
@@ -398,7 +400,8 @@ MessageTemplate JsonParser<Char>::GetErrorMessageWithEllipses(
 
 template <typename Char>
 MessageTemplate JsonParser<Char>::LookUpErrorMessageForJsonToken(
-    JsonToken token, Handle<Object>& arg, Handle<Object>& arg2, int pos) {
+    JsonToken token, DirectHandle<Object>& arg, DirectHandle<Object>& arg2,
+    int pos) {
   MessageTemplate message;
   switch (token) {
     case JsonToken::EOS:
@@ -424,8 +427,8 @@ MessageTemplate JsonParser<Char>::LookUpErrorMessageForJsonToken(
 }
 
 template <typename Char>
-void JsonParser<Char>::CalculateFileLocation(Handle<Object>& line,
-                                             Handle<Object>& column) {
+void JsonParser<Char>::CalculateFileLocation(DirectHandle<Object>& line,
+                                             DirectHandle<Object>& column) {
   // JSON allows only \r and \n as line terminators.
   // (See https://www.json.org/json-en.html - "whitespace")
   int line_number = 1;
@@ -449,13 +452,13 @@ void JsonParser<Char>::CalculateFileLocation(Handle<Object>& line,
     }
   }
   int column_number = 1 + static_cast<int>(cursor - last_line_break);
-  line = handle(Smi::FromInt(line_number), isolate());
-  column = handle(Smi::FromInt(column_number), isolate());
+  line = direct_handle(Smi::FromInt(line_number), isolate());
+  column = direct_handle(Smi::FromInt(column_number), isolate());
 }
 
 template <typename Char>
 void JsonParser<Char>::ReportUnexpectedToken(
-    JsonToken token, base::Optional<MessageTemplate> errorMessage) {
+    JsonToken token, std::optional<MessageTemplate> errorMessage) {
   // Some exception (for example stack overflow) was already thrown.
   if (isolate_->has_exception()) return;
 
@@ -465,9 +468,9 @@ void JsonParser<Char>::ReportUnexpectedToken(
                    ? Cast<SlicedString>(*original_source_)->offset()
                    : 0;
   int pos = position() - offset;
-  Handle<Object> arg(Smi::FromInt(pos), isolate());
-  Handle<Object> arg2;
-  Handle<Object> arg3;
+  DirectHandle<Object> arg(Smi::FromInt(pos), isolate());
+  DirectHandle<Object> arg2;
+  DirectHandle<Object> arg3;
   CalculateFileLocation(arg2, arg3);
 
   MessageTemplate message =
@@ -716,10 +719,9 @@ class FoldedMutableHeapNumberAllocator {
 //      entry in the DescriptorArray of the final map; if yes, then we don't
 //      need to do any map transitions.
 //   2. When given a property key, it looks for whether there is exactly one
-//      transition away from the current map ("ExpectedTransitionTarget").
-//      If yes, it tries to match against the key for this transition. The
-//      expected key is passed as a hint to the current property key getter,
-//      for e.g. faster internalised string materialisation.
+//      transition away from the current map ("ExpectedTransition").
+//      The expected key is passed as a hint to the current property key
+//      getter, for e.g. faster internalised string materialisation.
 //   3. Otherwise, it searches for whether there is any transition in the
 //      current map that matches the key.
 //   4. For all of the above, it checks whether the field represntation of the
@@ -778,6 +780,7 @@ class JSDataObjectBuilder {
     for (; !it.Done(); it.Advance()) {
       Handle<String> property_key;
       if (!TryAddFastPropertyForValue(
+              it.GetKeyChars(),
               [&](Handle<String> expected_key) {
                 return property_key = it.GetKey(expected_key);
               },
@@ -812,15 +815,17 @@ class JSDataObjectBuilder {
     return object();
   }
 
-  template <typename GetKeyFunction, typename GetValueFunction>
-  V8_INLINE bool TryAddFastPropertyForValue(GetKeyFunction&& get_key,
+  template <typename Char, typename GetKeyFunction, typename GetValueFunction>
+  V8_INLINE bool TryAddFastPropertyForValue(base::Vector<const Char> key_chars,
+                                            GetKeyFunction&& get_key,
                                             GetValueFunction&& get_value) {
     // The fast path is only valid as long as we haven't allocated an object
     // yet.
     DCHECK(object_.is_null());
 
     Handle<String> key;
-    bool existing_map_found = TryFastTransitionToPropertyKey(get_key, &key);
+    bool existing_map_found =
+        TryFastTransitionToPropertyKey(key_chars, get_key, &key);
     // Unconditionally get the value after getting the transition result.
     DirectHandle<Object> value = get_value();
     if (existing_map_found) {
@@ -981,9 +986,10 @@ class JSDataObjectBuilder {
   }
 
  private:
-  template <typename GetKeyFunction>
-  V8_INLINE bool TryFastTransitionToPropertyKey(GetKeyFunction&& get_key,
-                                                Handle<String>* key_out) {
+  template <typename Char, typename GetKeyFunction>
+  V8_INLINE bool TryFastTransitionToPropertyKey(
+      base::Vector<const Char> key_chars, GetKeyFunction&& get_key,
+      Handle<String>* key_out) {
     Handle<String> expected_key;
     Handle<Map> target_map;
 
@@ -997,12 +1003,19 @@ class JSDataObjectBuilder {
       target_map = expected_final_map_;
     } else {
       TransitionsAccessor transitions(isolate_, *map_);
-      expected_key = transitions.ExpectedTransitionKey();
-      if (!expected_key.is_null()) {
+      auto expected_transition = transitions.ExpectedTransition(key_chars);
+      if (!expected_transition.first.is_null()) {
         // Directly read out the target while reading out the key, otherwise it
         // might die if `get_key` can allocate.
-        target_map =
-            TransitionsAccessor(isolate_, *map_).ExpectedTransitionTarget();
+        target_map = expected_transition.second;
+
+        // We were successful and we are done.
+        DCHECK_EQ(target_map->instance_descriptors()
+                      ->GetDetails(descriptor_index)
+                      .location(),
+                  PropertyLocation::kField);
+        map_ = target_map;
+        return true;
       }
     }
 
@@ -1246,6 +1259,9 @@ class JsonParser<Char>::NamedPropertyIterator {
     return it_ == end_;
   }
 
+  base::Vector<const Char> GetKeyChars() {
+    return parser_.GetKeyChars(it_->string);
+  }
   Handle<String> GetKey(Handle<String> expected_key_hint) {
     return parser_.MakeString(it_->string, expected_key_hint);
   }
@@ -1948,10 +1964,9 @@ Handle<Object> JsonParser<Char>::ParseJsonNumber() {
     }
 
     base::Vector<const Char> chars(start, cursor_ - start);
-    number =
-        StringToDouble(chars,
-                       NO_CONVERSION_FLAGS,  // Hex, octal or trailing junk.
-                       std::numeric_limits<double>::quiet_NaN());
+    number = StringToDouble(chars,
+                            NO_CONVERSION_FLAG,  // Hex, octal or trailing junk.
+                            std::numeric_limits<double>::quiet_NaN());
 
     DCHECK(!std::isnan(number));
   }
