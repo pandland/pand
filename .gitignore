@@ -33,9 +33,10 @@ _
 sample
 pand
 build/
+.cache/
+.idea/
 
 # v8 related:
-_/  
 deps/v8
 deps/.cipd
 deps/depot_tools
