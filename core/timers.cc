@@ -1,4 +1,4 @@
-#include <luxio.h>
+#include <pandio.h>
 #include <v8.h>
 #include <unordered_map>
 #include <iostream>
@@ -15,12 +15,12 @@ typedef int64_t TimerId;
 struct TimerWrap {
   TimerId id;
   TimerType type;
-  lx_timer_t handle;
+  pd_timer_t handle;
   v8::Global<v8::Function> callback;
 };
 
 class Timers {
-  lx_io_t *ctx;
+  pd_io_t *ctx;
   TimerId ids = 1;
   std::unordered_map<TimerId, TimerWrap*> active_timers;
 
@@ -30,9 +30,9 @@ class Timers {
   
 protected:
   static Timers *instance_;
-  Timers(lx_io_t *ctx): ctx(ctx) {}
+  Timers(pd_io_t *ctx): ctx(ctx) {}
 public:
-  static void initialize(lx_io_t *ctx) {
+  static void initialize(pd_io_t *ctx) {
     Timers::instance_ = new Timers(ctx);
   }
 
@@ -45,10 +45,10 @@ public:
     timer->id = get_id();
     timer->callback.Reset(v8::Isolate::GetCurrent(), callback);
     timer->type = TIMEOUT;
-    lx_timer_init(ctx, &timer->handle);
+    pd_timer_init(ctx, &timer->handle);
     timer->handle.data = timer;
   
-    lx_timer_start(&timer->handle, handle_timer, timeout);
+    pd_timer_start(&timer->handle, handle_timer, timeout);
     active_timers[timer->id] = std::move(timer);
 
     return timer->id;
@@ -59,10 +59,10 @@ public:
     timer->id = get_id();
     timer->callback.Reset(v8::Isolate::GetCurrent(), callback);
     timer->type = INTERVAL;
-    lx_timer_init(ctx, &timer->handle);
+    pd_timer_init(ctx, &timer->handle);
     timer->handle.data = timer;
 
-    lx_timer_repeat(&timer->handle, handle_timer, interval);
+    pd_timer_repeat(&timer->handle, handle_timer, interval);
     active_timers[timer->id] = std::move(timer);
 
     return timer->id;
@@ -78,12 +78,12 @@ public:
     auto it = active_timers.find(id);
 
     if (it != active_timers.end()) {
-      lx_timer_stop(&it->second->handle);
+      pd_timer_stop(&it->second->handle);
       cleanup(it->second);
     }
   }
 
-  static void handle_timer(lx_timer_t *handle) {
+  static void handle_timer(pd_timer_t *handle) {
     TimerWrap *timer = static_cast<TimerWrap*>(handle->data);
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
     v8::HandleScope handle_scope(isolate);

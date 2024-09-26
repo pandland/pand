@@ -1,7 +1,8 @@
 #pragma once
 
+#include <cstdio>
 #include <v8.h>
-#include <luxio.h>
+#include <pandio.h>
 #include <assert.h>
 
 #include <string.h>
@@ -12,14 +13,14 @@ namespace runtime {
 
 class TcpStream {
 public:
-  lx_connection_t *conn;
-  lx_timer_t timeout;
+  pd_tcp_t conn;
+  pd_timer_t timeout;
   bool paused = false;
   v8::Persistent<v8::Object> obj;
 
   TcpStream(v8::Isolate *isolate, v8::Local<v8::Object> obj) {
     this->obj.Reset(isolate, obj);
-    lx_timer_init(IO::get()->ctx, &this->timeout);
+    pd_timer_init(IO::get()->ctx, &this->timeout);
     this->timeout.data = this;
   }
 
@@ -73,16 +74,16 @@ public:
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
     char *buf = strdup(*str);
 
-    lx_write_t *write_op = lx_write_alloc(buf, str.length());
-    write_op->data = stream;
-    lx_write(write_op, stream->conn, TcpStream::handle_write);
+    pd_write_t *write_op = new pd_write_t;
+    pd_write_init(write_op, buf, str.length(), TcpStream::handle_write);
+    pd_tcp_write(&stream->conn, write_op);
   }
 
   static void close(const v8::FunctionCallbackInfo<v8::Value> &args) {
     assert(args.Length() == 0);
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
 
-    lx_close(stream->conn);
+    pd_tcp_close(&stream->conn);
   }
 
   static void set_timeout(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -98,12 +99,12 @@ public:
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
 
     if (timeout == 0) {
-      lx_timer_stop(&stream->timeout);
+      pd_timer_stop(&stream->timeout);
       return;
     }
 
-    lx_timer_stop(&stream->timeout);
-    lx_timer_start(&stream->timeout,  TcpStream::handle_timeout, timeout);
+    pd_timer_stop(&stream->timeout);
+    pd_timer_start(&stream->timeout,  TcpStream::handle_timeout, timeout);
   }
 
   static void pause(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -112,7 +113,7 @@ public:
 
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
     if (!stream->paused) {
-      lx_stop_reading(&stream->conn->event, stream->conn->fd);
+      pd_tcp_pause(&stream->conn);
       stream->paused = true;
     }
   }
@@ -123,18 +124,19 @@ public:
 
     TcpStream *stream = static_cast<TcpStream*>(args.This()->GetAlignedPointerFromInternalField(0));
     if (stream->paused) {
-      lx_set_read_event(&stream->conn->event, stream->conn->fd);
+      pd_tcp_resume(&stream->conn);
       stream->paused = false;
     }
   }
 
   /* handlers for event loop */
-  static void handle_write(lx_write_t *write_op, int status) {
-    free((void*)write_op->buf);
-    free(write_op);
+  static void handle_write(pd_write_t *write_op, int status) {
+    free((void*)write_op->data.buf);
+    delete write_op;
   }
 
-  static void handle_data(lx_connection_t *conn) {
+  static void handle_data(pd_tcp_t *conn, char *buf, size_t size) {
+    printf("Status: %ld\n", size); fflush(stdout);
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
     
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
@@ -147,33 +149,26 @@ public:
       return;
     }
 
-    char buf[1024];
-    ssize_t res =  recv(conn->fd, buf, 1024, 0);
-    if (res <= 0) {
-      lx_close(conn);
-      return;
-    }
-
-    v8::Local<v8::Value> args[1] = {v8::String::NewFromUtf8(isolate, buf, v8::NewStringType::kNormal, res).ToLocalChecked()};
+    v8::Local<v8::Value> args[1] = {v8::String::NewFromUtf8(isolate, buf, v8::NewStringType::kNormal, size).ToLocalChecked()};
     callback->Call(context, v8::Undefined(isolate), 1, args).ToLocalChecked();
   }
 
-  static void handle_close(lx_connection_t *conn) {
+  static void handle_close(pd_tcp_t *conn) {
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     TcpStream *stream = static_cast<TcpStream*>(conn->data);
-    lx_timer_stop(&stream->timeout);
+    pd_timer_stop(&stream->timeout);
     v8::Local<v8::Function> callback =
       stream->obj.Get(isolate)->Get(context, v8_symbol(isolate, "onclose")).ToLocalChecked().As<v8::Function>();
     callback->Call(context, v8::Undefined(isolate), 0, {}).ToLocalChecked();
-    delete stream;
+    //delete stream;
   }
 
-  static void handle_timeout(lx_timer_t *timer) {
+  static void handle_timeout(pd_timer_t *timer) {
     TcpStream *stream = static_cast<TcpStream*>(timer->data);
-    lx_close(stream->conn);
+    pd_tcp_close(&stream->conn);
   }
 };
 
@@ -181,6 +176,7 @@ v8::Persistent<v8::Function> TcpStream::streamConstructor;
 
 class TcpServer {
   v8::Global<v8::Function> callback;
+  pd_tcp_server_t handle;
   int port;
 
   static const int64_t kDefaultTimeout = 120 * 1000;
@@ -204,31 +200,36 @@ public:
     server->callback.Reset(isolate, callback);
     server->port = port;
 
-    lx_listener_t *l = lx_listen(IO::get()->ctx, port, TcpServer::handle_accept);
-    l->data = server;
+    pd_tcp_server_init(IO::get()->ctx, &server->handle);
+    server->handle.data = server;
+    int status = pd_tcp_listen(&server->handle, port, TcpServer::handle_accept);
+    if (status < 0) {
+      printf("Something went wrong...");
+    }
   }
 
-  static void handle_accept(lx_connection_t *conn) {
-    TcpServer *server = static_cast<TcpServer*>(conn->listener->data);
+  static void handle_accept(pd_tcp_server_t *handle, pd_socket_t socket, int status) {
+    TcpServer *server = static_cast<TcpServer*>(handle->data); 
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
     v8::HandleScope handle_scope(isolate);
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Local<v8::Function> callback = server->callback.Get(isolate);
 
-    if (callback.IsEmpty()) {
-      lx_close(conn);
-      return;
-    }
-
     v8::Local<v8::Function> cons = v8::Local<v8::Function>::New(isolate, TcpStream::streamConstructor);
     v8::Local<v8::Object> tcpStreamWrap = cons->NewInstance(context).ToLocalChecked();
     TcpStream *stream = static_cast<TcpStream*>(tcpStreamWrap->GetAlignedPointerFromInternalField(0));
-    stream->conn = conn;
-    lx_timer_start(&stream->timeout, TcpStream::handle_timeout, TcpServer::kDefaultTimeout);
-    conn->data = (void*)stream;
-    conn->onclose = TcpStream::handle_close;
-    conn->ondata = TcpStream::handle_data;
+    pd_tcp_init(handle->ctx, &stream->conn);
+    pd_tcp_accept(&stream->conn, socket);
+    pd_timer_start(&stream->timeout, TcpStream::handle_timeout, TcpServer::kDefaultTimeout);
+    stream->conn.data = (void*)stream;
+    stream->conn.on_close = TcpStream::handle_close;
+    stream->conn.on_data = TcpStream::handle_data;
+
+    if (callback.IsEmpty()) {
+      pd_tcp_close(&stream->conn);
+      return;
+    }
 
     v8::Local<v8::Value> args[1] = {tcpStreamWrap};
     callback->Call(context, v8::Undefined(isolate), 1, args).ToLocalChecked();

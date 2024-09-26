@@ -1,7 +1,5 @@
 #include <v8.h>
-#include <luxio.h>
 #include <signal.h>
-
 #include "runtime.cc"
 
 int main(int argc, char* argv[]) {

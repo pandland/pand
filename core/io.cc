@@ -1,22 +1,22 @@
 #pragma once
-#include <luxio.h>
+#include <pandio.h>
 
 namespace runtime {
 
-/* IO singleton - manages actuall event loop */
+/* IO singleton - manages actual event loop */
 class IO {
   static IO *instance_;
 public:
-  lx_io_t *ctx;
+  pd_io_t *ctx;
 
-  IO(lx_io_t *ctx): ctx(ctx) {}
+  IO(pd_io_t *ctx): ctx(ctx) {}
   ~IO() {
     delete ctx;
   }
 
   static void create() {
-    lx_io_t *ctx = new lx_io_t;
-    lx_init(ctx);
+    pd_io_t *ctx = new pd_io_t;
+    pd_io_init(ctx);
     IO:instance_ = new IO(ctx);
   }
 
@@ -25,7 +25,7 @@ public:
   }
 
   inline void run() {
-    lx_run(this->ctx);
+    pd_io_run(this->ctx);
   }
 };
 

@@ -1,9 +1,10 @@
 #include <v8.h>
 #include <libplatform/libplatform.h>
 #include <filesystem>
-#include <luxio.h>
+#include <pandio.h>
 
 #include "loader.cc"
+#include "pandio/core.h"
 #include "timers.cc"
 #include "io.cc"
 #include "tcp.cc"
@@ -64,12 +65,13 @@ public:
   }
 
   void start(const char *entryfile, int argc, char* argv[]) {
+    IO::create();
+    pd_io_t *ctx = IO::get()->ctx;
+
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     std::string entrypath = fs::absolute(entryfile).string();
-    IO::create();
-    lx_io_t *ctx = IO::get()->ctx;
 
     v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
     Runtime::initialize(runtime_template, isolate);
@@ -91,8 +93,8 @@ public:
     loader.execute(isolate, context, "std:bootstrap");
     loader.execute(isolate, context, entrypath);
 
-    std::thread memory_monitor(MonitorMemoryUsage, isolate);
-    memory_monitor.detach();
+    //std::thread memory_monitor(MonitorMemoryUsage, isolate);
+    //memory_monitor.detach();
 
     IO::get()->run();
   }
@@ -132,11 +134,7 @@ public:
   }
 
   static int get_pid() {
-    #if defined(_WIN32) || defined(_WIN64)
-        return GetCurrentProcessId();
-    #else
-        return getpid();
-    #endif
+    return pd_getpid();
   }
 
   static void cwd(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -152,21 +150,7 @@ public:
   }
 
   static const char *get_platform() {
-    #if defined(_WIN32) || defined(_WIN64)
-        return "win32";
-    #elif defined(__APPLE__) || defined(__MACH__)
-        return "darwin";
-    #elif defined(__linux__)
-        return "linux";
-    #elif defined(__FreeBSD__)
-        return "freebsd";
-    #elif defined(__OpenBSD__)
-        return "openbsd";
-    #elif defined(__unix__)
-        return "unix";
-    #else
-        return "unknown";
-    #endif
+    return pd_get_platform();
   }
 
   static void env(const v8::FunctionCallbackInfo<v8::Value> &args) {

@@ -16,14 +16,16 @@ endif()
 
 set(ENV{PATH} "$ENV{PATH}:${CMAKE_SOURCE_DIR}/deps/depot_tools")
 
-message(STATUS "Running 'fetch v8'...")
-execute_process(
-  COMMAND fetch v8
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps
-  RESULT_VARIABLE result
-)
-if(result)
-  message(FATAL_ERROR "Failed to fetch v8.")
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/v8")
+  message(STATUS "Running 'fetch v8'...")
+  execute_process(
+    COMMAND fetch v8
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps
+    RESULT_VARIABLE result
+  )
+  if(result)
+    message(FATAL_ERROR "Failed to fetch v8.")
+  endif()
 endif()
 
 message(STATUS "Running 'gclient sync'...")

@@ -27,10 +27,11 @@ You need to download v8 as dependency and it will take reasonable amount of time
 ```sh
 # Download v8 and build
 cmake -P v8.cmake
+
+# Build our actual project
 mkdir build
 cd build
 
-# Build our actual project
 cmake ..
 cmake --build .
 ```
