@@ -18,11 +18,21 @@
 
 My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++. Very unstable as I learn how things work together.
 
+### Clone
+
+```sh
+git clone https://github.com/pandland/pand.git
+# some dependencies are installed via git submodules (for now)
+git submodule update
+```
+
 ### Building
 
-Make sure you have CMake installed.
+Make sure you have CMake installed. Build infrastructure is still in early stage, currently we rely on newest version of v8 - this is not what I want, but for now it's fine.
 
 You need to download v8 as dependency and it will take reasonable amount of time to compile (even 40 mins - depends on machine).
+
+Windows build scripts are still in progress (and this is terrible experience).
 
 ```sh
 # Download v8 and build
@@ -38,6 +48,7 @@ cmake --build .
 
 > `v8.cmake` script is not tested yet on fresh Linux installation.
 
+### Code sample
 
 > Current state example:
 

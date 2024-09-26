@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <unordered_map>
 
-#include <assert.h>
+#include <cassert>
 #include "js_internals.h"
 #include <v8.h>
 #include "v8_utils.cc"
@@ -140,7 +140,7 @@ namespace runtime
         v8::Isolate *isolate = context->GetIsolate();
         meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, "file://" + result->second)).Check();
         meta->Set(context, v8_symbol(isolate, "filename"), v8_value(isolate, result->second)).Check();
-        meta->Set(context, v8_symbol(isolate, "dirname"), v8_value(isolate, fs::path(result->second).parent_path())).Check();
+        meta->Set(context, v8_symbol(isolate, "dirname"), v8_value(isolate, fs::path(result->second).parent_path().string())).Check();
         meta->Set(context, v8_symbol(isolate, "resolve"), v8::Function::New(context, resolve).ToLocalChecked()).Check(); 
       }
     }
@@ -162,8 +162,8 @@ namespace runtime
 
       auto parent_path = absolute_paths.find(referrer->ScriptId());
       if (parent_path == absolute_paths.end()) {
-        printf("error: Unable to find referer's path\n");
-        return v8::MaybeLocal<v8::Module>();
+        printf("error: Unable to find referrer's path\n");
+        return {};
       }
 
       std::string path = Loader::resolve_module_path(parent_path->second, specifier_name);
@@ -200,7 +200,7 @@ namespace runtime
       }
 
       printf("Error: something went wrong :o\n");
-      return v8::MaybeLocal<v8::Module>();
+      return {};
     }
 
     static std::string resolve_module_path(fs::path parent, const std::string &specifier) {

@@ -1,9 +1,7 @@
 #include <v8.h>
-#include <signal.h>
 #include "runtime.cc"
 
 int main(int argc, char* argv[]) {
-    signal(SIGPIPE, SIG_IGN);
     const char* flags = "--max-old-space-size=4096";
     v8::V8::InitializeICU();
     v8::V8::SetFlagsFromString(flags);

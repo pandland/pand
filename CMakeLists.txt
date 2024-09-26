@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (MSVC)
+    # v8 checks __cplusplus version
+    add_compile_options(/Zc:__cplusplus)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt.lib")
+    set(CMAKE_CXX_FLAGS_RELEASE "/MD /D_ITERATOR_DEBUG_LEVEL=0")
+endif()
+
 add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 
 add_executable(pand core/main.cc)
@@ -20,19 +27,27 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/pandio pandio_build)
 
 target_link_directories(pand
     PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/out.gn/x64.release.sample/obj
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/out.gn/x64.release/obj
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/swcc/target/release)
 
 
-target_link_libraries(pand
-    swcc
-    pandio
-    v8_libplatform
-    v8_monolith
-    pthread
-    rt
-    dl
-)
-
-target_link_options(pand PRIVATE -pthread -lrt -ldl)
+if(WIN32)
+    target_link_libraries(pand
+            pandio
+            v8_monolith.lib
+            Advapi32.lib
+            Winmm.lib
+            Dbghelp.lib
+    )
+else ()
+    target_link_libraries(pand
+            pandio
+            v8_libplatform
+            v8_monolith
+            pthread
+            rt
+            dl
+    )
+    target_link_options(pand PRIVATE -pthread -lrt -ldl)
+endif()

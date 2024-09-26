@@ -138,7 +138,7 @@ public:
   }
 
   static void cwd(const v8::FunctionCallbackInfo<v8::Value> &args) {
-    args.GetReturnValue().Set(v8_value(args.GetIsolate(), std::filesystem::current_path()));
+    args.GetReturnValue().Set(v8_value(args.GetIsolate(), std::filesystem::current_path().string()));
   }
 
   static void exit_process(const v8::FunctionCallbackInfo<v8::Value> &args) {

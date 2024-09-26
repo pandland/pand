@@ -35,6 +35,7 @@ pand
 build/
 .cache/
 .idea/
+cmake-build-debug-visual-studio/
 
 # v8 related:
 deps/v8
