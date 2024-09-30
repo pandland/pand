@@ -71,7 +71,7 @@ public:
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
-    std::string entrypath = fs::absolute(entryfile).string();
+    std::string entrypath = fs::canonical(entryfile).string();
 
     v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
     Runtime::initialize(runtime_template, isolate);

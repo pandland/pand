@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <swc_transform.h>
 #include <string>
 #include <sstream>

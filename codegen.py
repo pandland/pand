@@ -7,7 +7,8 @@ def generate_cpp_header(folder_path, output_file):
         f.write(f"#ifndef {header_guard}\n")
         f.write(f"#define {header_guard}\n\n")
         f.write("#include <unordered_map>\n")
-        f.write("#include <string>\n\n")
+        f.write("#include <string>\n")
+        f.write("#include <vector>\n\n")
         f.write("std::unordered_map<std::string, std::vector<unsigned char>> js_internals = {\n")
         
         first = True
@@ -16,7 +17,7 @@ def generate_cpp_header(folder_path, output_file):
                 module_name = os.path.splitext(file_name)[0]
                 file_path = os.path.join(folder_path, file_name)
                 
-                with open(file_path, 'rb') as js_file:  # Open file in binary mode
+                with open(file_path, 'rb') as js_file:
                     byte_content = js_file.read()
                     hex_content = ', '.join(f'0x{byte:02x}' for byte in byte_content)
                 
