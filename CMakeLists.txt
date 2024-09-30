@@ -22,8 +22,9 @@ target_include_directories(pand
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/swcc/include)
 
-# Add pandio library
+# Our cmake deps
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/pandio pandio_build)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ada ada_build)
 
 target_link_directories(pand
     PRIVATE
@@ -35,6 +36,7 @@ target_link_directories(pand
 if(WIN32)
     target_link_libraries(pand
             pandio
+            ada
             v8_monolith.lib
             Advapi32.lib
             Winmm.lib
@@ -43,6 +45,7 @@ if(WIN32)
 else ()
     target_link_libraries(pand
             pandio
+            ada
             v8_libplatform
             v8_monolith
             pthread

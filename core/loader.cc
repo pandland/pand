@@ -7,6 +7,7 @@
 #include <fstream>
 #include <filesystem>
 #include <unordered_map>
+#include <ada.h>
 
 #include <cassert>
 #include "js_internals.h"
