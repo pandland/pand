@@ -1,3 +1,0 @@
-[submodule "pandio"]
-	path = deps/pandio
-	url = https://github.com/pandland/pandio

@@ -22,9 +22,6 @@ My own JavaScript runtime - currently, just randomly messing around with v8 engi
 
 ```sh
 git clone https://github.com/pandland/pand.git
-# some dependencies are installed via git submodules (for now)
-git submodule init
-git submodule update
 ```
 
 ### Building
