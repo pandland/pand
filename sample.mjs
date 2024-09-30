@@ -3,6 +3,7 @@ import { tcpListen } from 'std:net';
 import path from 'std:path';
 
 console.log(`Basename: ${path.basename(import.meta.filename)}`);
+console.log(`Resolved: ${import.meta.resolve('./in%ex.js')}`);
 
 function willThrow() {
   throw new Error("Some error");

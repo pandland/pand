@@ -95,7 +95,8 @@ namespace runtime
       }
 
       std::string abs_path = Loader::resolve_module_path(fs::path(*parent_path), *path);
-      args.GetReturnValue().Set(v8_value(isolate, "file://" + abs_path));
+      std::string url = Loader::path_to_url(abs_path);
+      args.GetReturnValue().Set(v8_value(isolate, url));
     }
 
     static v8::MaybeLocal<v8::Promise> dynamic_load(
@@ -140,11 +141,28 @@ namespace runtime
       auto result = absolute_paths.find(module->ScriptId());
       if (result != absolute_paths.end()) {
         v8::Isolate *isolate = context->GetIsolate();
-        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, "file://" + result->second)).Check();
+        std::string url = Loader::path_to_url(result->second);
+        meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, url)).Check();
         meta->Set(context, v8_symbol(isolate, "filename"), v8_value(isolate, result->second)).Check();
         meta->Set(context, v8_symbol(isolate, "dirname"), v8_value(isolate, fs::path(result->second).parent_path().string())).Check();
         meta->Set(context, v8_symbol(isolate, "resolve"), v8::Function::New(context, resolve).ToLocalChecked()).Check(); 
       }
+    }
+
+    static inline std::string path_to_url(std::string &path) {
+      if (path.find('%') == std::string_view::npos) {
+        return ada::href_from_file(path);
+      }
+
+      std::string escaped_path; // escape % sign
+      for (char ch : path) {
+          if (ch == '%') {
+              escaped_path += "%25";
+          } else {
+              escaped_path += ch;
+          }
+      }
+      return ada::href_from_file(escaped_path);
     }
 
     static v8::MaybeLocal<v8::Module> load(
