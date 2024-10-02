@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <swc_transform.h>
 #include <string>
@@ -52,6 +54,10 @@ namespace runtime
       resolve_cache[path].Reset(isolate, mod);
 
       bool intialized = mod->InstantiateModule(context, Loader::load).IsJust();
+      if (!intialized) {
+        std::cerr << "error: Unable to run module '" << path << "'" << std::endl;
+        exit(1);
+      }
 
       v8::TryCatch try_catch(isolate);
       v8::MaybeLocal<v8::Value> result = mod->Evaluate(context);
@@ -183,6 +189,7 @@ namespace runtime
       auto parent_path = absolute_paths.find(referrer->ScriptId());
       if (parent_path == absolute_paths.end()) {
         printf("error: Unable to find referrer's path\n");
+        exit(1);
         return {};
       }
 
@@ -212,14 +219,16 @@ namespace runtime
 
       v8::ScriptCompiler::Source script_source(source, origin);
       v8::Local<v8::Module> module;
-      
+
       if (v8::ScriptCompiler::CompileModule(isolate, &script_source).ToLocal(&module)) {
         absolute_paths.emplace(module->ScriptId(), path);
         resolve_cache[path].Reset(isolate, module);
+
         return module;
       }
 
-      printf("Error: something went wrong :o\n");
+      printf("error: Unable to find module '%s'\n", path.c_str());
+      exit(1);
       return {};
     }
 
@@ -238,14 +247,19 @@ namespace runtime
       if (is_internal(path)) {
         auto internal_src = js_internals.find(path);
         if (internal_src == js_internals.end()) {
-          printf("Invalid std module name\n");
+          printf("error: Invalid std module name: '%s'\n", path.c_str());
           exit(1);
         }
 
         return std::string(internal_src->second.begin(), internal_src->second.end());
       }
-      
+
       std::ifstream file(path);
+      if (!file.is_open()) {
+        printf("error: Unable to load module: '%s'\n", path.c_str());
+        exit(1);
+      }
+
       std::stringstream buffer;
       buffer << file.rdbuf();
       return buffer.str();

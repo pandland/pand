@@ -1,3 +1,4 @@
+#include <iostream>
 #include <v8.h>
 #include "runtime.cc"
 
@@ -9,7 +10,7 @@ int main(int argc, char* argv[]) {
     v8::V8::InitializeExternalStartupData(argv[0]);
 
     if (argc < 2) {
-        printf("Expected filename arg\n");
+        std::cerr << "error: No script specified" << std::endl;
         return 1;
     }
 

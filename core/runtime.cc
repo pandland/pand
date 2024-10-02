@@ -1,3 +1,5 @@
+#include <iostream>
+#include <system_error>
 #include <v8.h>
 #include <libplatform/libplatform.h>
 #include <filesystem>
@@ -71,7 +73,13 @@ public:
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
-    std::string entrypath = fs::canonical(entryfile).string();
+    std::error_code errcode;
+    std::string entrypath = fs::canonical(entryfile, errcode).string();
+
+    if (errcode) {
+      std::cerr << "error: " << errcode.message() << " '" << entryfile << "'" << std::endl;
+      exit(1);
+    }
 
     v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
     Runtime::initialize(runtime_template, isolate);
