@@ -105,6 +105,7 @@ namespace runtime
       args.GetReturnValue().Set(v8_value(isolate, url));
     }
 
+    // await import()
     static v8::MaybeLocal<v8::Promise> dynamic_load(
         v8::Local<v8::Context> context,
         v8::Local<v8::Data> host_defined_options,
@@ -119,7 +120,8 @@ namespace runtime
       v8::String::Utf8Value specifier_str(isolate, specifier);
 
       std::string parent_path(*resource);
-      std::string path = Loader::resolve_module_path(parent_path, *specifier_str);
+
+      std::string path = is_internal(*specifier_str) ? *specifier_str : Loader::resolve_module_path(parent_path, *specifier_str);
 
       v8::MaybeLocal<v8::Module> mod = Loader::create_module(isolate, path);
       if (mod.IsEmpty()) {
