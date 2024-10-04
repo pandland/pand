@@ -98,6 +98,7 @@ public:
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
     isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
+    //isolate->SetPromiseRejectCallback(Loader::handle_rejects);
     loader.execute(isolate, context, "std:bootstrap");
     loader.execute(isolate, context, entrypath);
 

@@ -1,5 +1,3 @@
-import '../compare.js'
-
 export function test1() {
   console.log("Test1 call");
   console.log(`Dirname: ${import.meta.dirname}`)
@@ -8,3 +6,4 @@ export function test1() {
 }
 
 test1();
+throw new Error('some err');

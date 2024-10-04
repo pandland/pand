@@ -35,6 +35,7 @@ namespace runtime
     }
     // path is always supposed to be absolute
     void execute(v8::Isolate *isolate, v8::Local<v8::Context> context, std::string path) {
+      v8::HandleScope handle_scope(isolate);
       std::string src = load_file(path);
 
       v8::Local<v8::String> source = v8_value(isolate, src);
@@ -73,7 +74,11 @@ namespace runtime
           v8::Local<v8::Promise> promise = value.As<v8::Promise>();
           if (promise->State() == v8::Promise::kRejected) {
               v8::String::Utf8Value error(isolate, promise->Result());
+              v8::Local<v8::Message> errmsg = v8::Exception::CreateMessage(isolate, promise->Result());
               printf("%s\n", *error);
+              printf("line: %d\n", errmsg->GetLineNumber(context).FromJust());
+              v8::String::Utf8Value errfile(isolate, errmsg->GetScriptResourceName());
+              printf("filename: %s\n", *errfile);
           }
       }
     }
@@ -274,4 +279,8 @@ namespace runtime
       resolve_cache.clear();
     }
   };
+
+  static void handle_rejects(v8::PromiseRejectMessage message) {
+    printf("Fck you\n");
+  }
 }
