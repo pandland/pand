@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <pandio.h>
 
-#include "loader.cc"
+#include "loader.h"
 #include "pandio/core.h"
 #include "timers.cc"
 #include "io.cc"
@@ -16,33 +16,7 @@
 
 #define RUNTIME_VERSION "v0.0.0"
 
-namespace fs = std::filesystem;
 namespace runtime {
-
-
-void PrintMemoryUsage(v8::Isolate* isolate) {
-    v8::HeapStatistics heap_stats;
-    isolate->GetHeapStatistics(&heap_stats);
-    std::cout << "--------------------------------------------------------\n";
-    std::cout << "Total heap size: " << heap_stats.total_heap_size() << " bytes\n";
-    std::cout << "Total heap size executable: " << heap_stats.total_heap_size_executable() << " bytes\n";
-    std::cout << "Total physical size: " << heap_stats.total_physical_size() << " bytes\n";
-    std::cout << "Total available size: " << heap_stats.total_available_size() << " bytes\n";
-    std::cout << "Used heap size: " << heap_stats.used_heap_size() << " bytes\n";
-    std::cout << "Heap size limit: " << heap_stats.heap_size_limit() << " bytes\n";
-    std::cout << "Malloced memory: " << heap_stats.malloced_memory() << " bytes\n";
-    std::cout << "Peak malloced memory: " << heap_stats.peak_malloced_memory() << " bytes\n";
-    std::cout << "Number of native contexts: " << heap_stats.number_of_native_contexts() << "\n";
-    std::cout << "Number of detached contexts: " << heap_stats.number_of_detached_contexts() << "\n";
-    std::cout << "--------------------------------------------------------\n";
-}
-
-void MonitorMemoryUsage(v8::Isolate* isolate) {
-    while (true) {
-        PrintMemoryUsage(isolate);
-        std::this_thread::sleep_for(std::chrono::seconds(10));
-    }
-}
 
 /* entrypoint class for JS runtime */
 class Runtime {
@@ -73,14 +47,6 @@ public:
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
-    std::error_code errcode;
-    std::string entrypath = fs::canonical(entryfile, errcode).string();
-
-    if (errcode) {
-      std::cerr << "error: " << errcode.message() << " '" << entryfile << "'" << std::endl;
-      exit(1);
-    }
-
     v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
     Runtime::initialize(runtime_template, isolate);
     global->Set(v8_symbol(isolate, "Runtime"), runtime_template);
@@ -98,9 +64,8 @@ public:
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
     isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
-    //isolate->SetPromiseRejectCallback(Loader::handle_rejects);
     loader.execute(isolate, context, "std:bootstrap");
-    loader.execute(isolate, context, entrypath);
+    loader.start(isolate, context, entryfile);
 
     //std::thread memory_monitor(MonitorMemoryUsage, isolate);
     //memory_monitor.detach();

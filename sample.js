@@ -1,7 +1,6 @@
 import { assert, assertStrictEqual, assertThrows } from 'std:assert';
 import { tcpListen } from 'std:net';
 import path from 'std:path';
-import {} from './samples/test.mjs';
 
 console.log(`Basename: ${path.basename(import.meta.filename)}`);
 console.log(`Resolved: ${import.meta.resolve('./in%ex.js')}`);

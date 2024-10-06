@@ -1,4 +1,5 @@
 {
+  "clangd.arguments": ["--log=verbose"],
   "files.associations": {
     "*.css": "css",
     "iostream": "cpp",

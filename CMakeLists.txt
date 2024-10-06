@@ -14,9 +14,13 @@ endif()
 
 add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 
-add_executable(pand core/main.cc)
+add_executable(pand 
+    core/main.cc
+    core/loader.cc
+    core/loader.h    
+)
 
-target_include_directories(pand
+target_include_directories(pand SYSTEM
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/include
     PRIVATE

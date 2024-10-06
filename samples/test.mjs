@@ -4,6 +4,3 @@ export function test1() {
   console.log(`Filename: ${import.meta.filename}`);
   console.log(`Url: ${import.meta.url}`);
 }
-
-test1();
-throw new Error('some err');
