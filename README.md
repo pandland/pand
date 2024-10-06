@@ -48,6 +48,11 @@ cmake --build .
 
 ### Code sample
 
+##### Currently working on providing helpful messages for working with code, like this:
+
+![image](https://github.com/user-attachments/assets/14d06de3-8605-4f2c-b063-a0259cdb674d)
+
+
 > Current state example:
 
 ```js
