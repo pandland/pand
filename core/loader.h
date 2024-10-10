@@ -20,11 +20,12 @@ class Loader {
   static std::string load_file(const std::string &);
   static std::string load_internal(const std::string &);
   static inline bool is_internal(std::string specifier);
-  static void report_details(v8::Local<v8::Message> msg,
-                           v8::Local<v8::Context> context);
 
 public:
   ~Loader();
+  static void report_details(v8::Local<v8::Message> msg,
+                           v8::Local<v8::Context> context);
+  static void handle_rejects(v8::PromiseRejectMessage);
   void execute(v8::Isolate *, v8::Local<v8::Context>, std::string);
   void start(v8::Isolate *, v8::Local<v8::Context>, std::string);
   static inline std::string path_to_url(std::string &);

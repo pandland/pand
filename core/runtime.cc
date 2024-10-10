@@ -1,5 +1,6 @@
 #include <iostream>
 #include <system_error>
+#include <v8-isolate.h>
 #include <v8.h>
 #include <libplatform/libplatform.h>
 #include <filesystem>
@@ -64,6 +65,7 @@ public:
     Loader loader;
     isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamic_load);
     isolate->SetHostInitializeImportMetaObjectCallback(Loader::set_meta);
+    isolate->SetPromiseRejectCallback(Loader::handle_rejects);
     loader.execute(isolate, context, "std:bootstrap");
     loader.start(isolate, context, entryfile);
 

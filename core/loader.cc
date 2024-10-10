@@ -1,11 +1,19 @@
 #include <ada.h>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <v8-context.h>
+#include <v8-isolate.h>
+#include <v8-local-handle.h>
 #include <v8-message.h>
+#include <v8-microtask-queue.h>
+#include <v8-persistent-handle.h>
+#include <v8-promise.h>
+#include <v8-value.h>
 
 #include "js_internals.h"
 #include "loader.h"
@@ -42,6 +50,72 @@ std::string Loader::load_file(const std::string &path) {
   std::stringstream buffer;
   buffer << file.rdbuf();
   return buffer.str();
+}
+
+struct RejectedPromise {
+  v8::Global<v8::Promise> promise;
+  v8::Global<v8::Value> value;
+  v8::Isolate *isolate;
+
+  RejectedPromise(v8::Isolate *isolate, v8::Local<v8::Promise> promise,
+                  v8::Local<v8::Value> value)
+      : isolate(isolate) {
+    this->promise.Reset(isolate, promise);
+    this->value.Reset(isolate, value);
+  }
+
+  ~RejectedPromise() {
+    this->promise.Reset();
+    this->value.Reset();
+  }
+};
+
+static std::unordered_map<int, RejectedPromise *> rejected_promises;
+static bool checked = false;
+
+void check_errors(void *data) {
+  checked = false;
+
+  if (rejected_promises.size() == 0) {
+    return;
+  }
+
+  RejectedPromise *wrapper = rejected_promises.begin()->second;
+  v8::Isolate *isolate = wrapper->isolate;
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::Local<v8::Promise> promise = wrapper->promise.Get(isolate);
+
+  v8::String::Utf8Value error(isolate, promise->Result());
+  v8::Local<v8::Message> errmsg =
+      v8::Exception::CreateMessage(isolate, promise->Result());
+  printf("error: Uncaught (in promise) %s\n", *error);
+  v8::String::Utf8Value errfile(isolate, errmsg->GetScriptResourceName());
+
+  Loader::report_details(errmsg, context);
+  exit(1);
+}
+
+void Loader::handle_rejects(v8::PromiseRejectMessage message) {
+  v8::PromiseRejectEvent event = message.GetEvent();
+  v8::Local<v8::Promise> promise = message.GetPromise();
+  v8::Local<v8::Value> value = message.GetValue();
+  v8::Isolate *isolate = promise->GetIsolate();
+
+  int hash = promise->GetIdentityHash();
+
+  if (event == v8::kPromiseRejectWithNoHandler) {
+    rejected_promises[hash] = new RejectedPromise(isolate, promise, value);
+  } else if (event == v8::kPromiseHandlerAddedAfterReject) {
+    delete rejected_promises[hash];
+    rejected_promises.erase(hash);
+  } else {
+    return;
+  }
+
+  if (!checked) {
+    isolate->EnqueueMicrotask(check_errors);
+    checked = true;
+  }
 }
 
 std::string Loader::load_internal(const std::string &name) {
@@ -139,6 +213,7 @@ void Loader::execute(v8::Isolate *isolate, v8::Local<v8::Context> context,
           v8::Exception::CreateMessage(isolate, promise->Result());
       printf("error: Uncaught (in promise) %s\n", *error);
       v8::String::Utf8Value errfile(isolate, errmsg->GetScriptResourceName());
+
       // printf("filename: %s\n", *errfile);
       Loader::report_details(errmsg, context);
     }
