@@ -2,4 +2,7 @@ async function canThrow() {
   throw new Error('danger');
 }
 
-canThrow();
+await canThrow().catch((err) => {
+  console.log("we got error!");
+});
+console.log("heheszq")
