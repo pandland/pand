@@ -54,7 +54,7 @@ Mod::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
 }
 
 int Mod::loadContent() {
-  if (type == ModType::kInternal) {
+  if (isInternal()) {
     auto internal_src = js_internals.find(fullpath);
     if (internal_src == js_internals.end()) {
       return -1;
@@ -100,13 +100,15 @@ v8::MaybeLocal<v8::Module> Mod::initialize(v8::Isolate *isolate) {
   return {};
 }
 
-std::string Mod::cannocialPath(std::string_view filepath) {
+std::string Mod::canonicalPath(std::string_view filepath) {
   fs::path abs_path = fs::current_path() / fs::path(filepath);
   return abs_path.lexically_normal().string();
 }
 
 void Mod::execScript(v8::Isolate *isolate, std::string_view filepath) {
-  std::string fullpath = Mod::cannocialPath(filepath);
+  fs::path path(filepath);
+  std::string fullpath =
+      path.is_absolute() ? path.string() : Mod::canonicalPath(filepath);
   Mod *mod = new Mod(fullpath, ModType::kScript);
   return Mod::evaluate(isolate, mod);
 }

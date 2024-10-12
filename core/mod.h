@@ -2,7 +2,6 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
-#include <v8-isolate.h>
 #include <v8.h>
 
 namespace fs = std::filesystem;
@@ -54,7 +53,7 @@ public:
 
   static void execInternal(v8::Isolate *, std::string_view);
 
-  static std::string cannocialPath(std::string_view);
+  static std::string canonicalPath(std::string_view);
   /* parent path means full path to script file which loads given specifier */
   static std::string resolveModulePath(fs::path parent,
                                        std::string_view specifier);
