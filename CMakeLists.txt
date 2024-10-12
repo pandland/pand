@@ -17,6 +17,7 @@ add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 add_executable(pand 
     core/pand.h
     core/pand.cc
+    core/mod.h
     core/main.cc
 )
 
