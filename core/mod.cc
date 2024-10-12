@@ -1,46 +1,115 @@
 #include "mod.h"
 #include "v8_utils.cc"
 #include <ada.h>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string_view>
+
+#include "js_internals.h"
 
 namespace pand::core {
 
-std::unordered_map<int, Mod> mods;
+std::unordered_map<int, Mod *> mods;
 std::unordered_map<std::string, v8::Global<v8::Module>> resolve_cache;
 
 v8::MaybeLocal<v8::Module>
 Mod::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
-          v8::Local<v8::FixedArray> importAssertions,
+          v8::Local<v8::FixedArray> import_attributes,
           v8::Local<v8::Module> referrer) {
   v8::Isolate *isolate = context->GetIsolate();
   v8::String::Utf8Value specifierUtf8(isolate, specifier);
   std::string_view specifierName = *specifierUtf8;
 
-  auto modRes = mods.find(referrer->ScriptId());
-  if (modRes == mods.end()) {
-    printf("error: Unable to find referrer's path\n");
-    exit(1);
+  auto modIter = mods.find(referrer->ScriptId());
+  if (modIter == mods.end()) {
+    printf("error: Unable to find referrer's module\n");
+    return v8::MaybeLocal<v8::Module>();
   }
 
-  Mod &mod = modRes->second;
+  Mod *parent = modIter->second;
+  ModType type = Mod::detectType(specifierName);
   std::string path =
-      Mod::resolve_module_path(mod.fullpath, specifierName);
+      (type == ModType::kInternal)
+          ? std::string(specifierName)
+          : Mod::resolveModulePath(parent->fullpath, specifierName);
+
+  // try to load from cache
+  auto cached_module = resolve_cache.find(path);
+  if (cached_module != resolve_cache.end()) {
+    return cached_module->second.Get(isolate);
+  }
+
+  Mod *mod = new Mod(path, type);
+  v8::MaybeLocal<v8::Module> result = mod->initialize(isolate);
+  if (result.IsEmpty()) {
+    delete mod;
+    return result;
+  }
+
+  return result;
 }
 
-void Mod::set_meta(v8::Local<v8::Context> context, v8::Local<v8::Module> module,
-                   v8::Local<v8::Object> meta) {
+int Mod::loadContent() {
+  if (type == ModType::kInternal) {
+    auto internal_src = js_internals.find(fullpath);
+    if (internal_src == js_internals.end()) {
+      return -1;
+    }
+
+    content =
+        std::string(internal_src->second.begin(), internal_src->second.end());
+    return 0;
+  }
+
+  std::ifstream file(fullpath);
+  if (!file.is_open()) {
+    return -1;
+  }
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  content = buffer.str();
+
+  return 0;
+}
+
+v8::MaybeLocal<v8::Module> Mod::initialize(v8::Isolate *isolate) {
+  int status = loadContent();
+  if (status == -1) {
+    return v8::MaybeLocal<v8::Module>();
+  }
+
+  v8::Local<v8::String> source = v8_value(isolate, content);
+  v8::ScriptOrigin origin(v8_value(isolate, fullpath), 0, 0, true, -1,
+                          v8::Local<v8::Value>(), false, false, true);
+
+  v8::ScriptCompiler::Source script_source(source, origin);
+  v8::Local<v8::Module> module;
+
+  if (v8::ScriptCompiler::CompileModule(isolate, &script_source)
+          .ToLocal(&module)) {
+
+    mods.emplace(module->ScriptId(), this);
+    resolve_cache[fullpath].Reset(isolate, module);
+
+    return module;
+  }
+}
+
+void Mod::setMeta(v8::Local<v8::Context> context, v8::Local<v8::Module> module,
+                  v8::Local<v8::Object> meta) {
   auto result = mods.find(module->ScriptId());
   if (result != mods.end()) {
     v8::Isolate *isolate = context->GetIsolate();
-    Mod &mod = result->second;
+    Mod *mod = result->second;
 
-    meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, mod.url))
+    meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, mod->url))
         .Check();
     meta->Set(context, v8_symbol(isolate, "filename"),
-              v8_value(isolate, mod.fullpath))
+              v8_value(isolate, mod->fullpath))
         .Check();
     meta->Set(context, v8_symbol(isolate, "dirname"),
-              v8_value(isolate, mod.dirname))
+              v8_value(isolate, mod->dirname))
         .Check();
     meta->Set(context, v8_symbol(isolate, "resolve"),
               v8::Function::New(context, Mod::resolve).ToLocalChecked())
@@ -57,52 +126,47 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
       meta->Get(isolate->GetCurrentContext(), v8_symbol(isolate, "filename"));
   if (parent.IsEmpty()) {
     isolate->ThrowException(v8::Exception::ReferenceError(
-        v8::String::NewFromUtf8(isolate, "Unable to get import.meta.dirname")
-            .ToLocalChecked()));
+        v8_symbol(isolate, "Unable to get import.meta.dirname")));
     return;
   }
 
   v8::Local<v8::Value> path_to_resolve = args[0];
   if (!path_to_resolve->IsString()) {
     isolate->ThrowException(v8::Exception::TypeError(
-        v8::String::NewFromUtf8(isolate, "Resolve path must be a string")
-            .ToLocalChecked()));
+        v8_symbol(isolate, "Unable to get import.meta.dirname")));
     return;
   }
 
   v8::String::Utf8Value parent_path(isolate, parent.ToLocalChecked());
   v8::String::Utf8Value path(isolate, path_to_resolve);
 
-  std::string pathstr(*path);
+  std::string_view pathstr = *path;
   if (!pathstr.starts_with("/") && !pathstr.starts_with("./") &&
       !pathstr.starts_with("../")) {
-    isolate->ThrowException(v8::Exception::TypeError(
-        v8::String::NewFromUtf8(
-            isolate, "Resolve path must be prefixed with / or ./ or ../")
-            .ToLocalChecked()));
+    isolate->ThrowException(v8::Exception::TypeError(v8_symbol(
+        isolate, "Resolve path must be prefixed with / or ./ or ../")));
     return;
   }
 
-  std::string abs_path =
-      Mod::resolve_module_path(fs::path(*parent_path), *path);
-  std::string url = Mod::path_to_url(abs_path);
+  std::string abs_path = Mod::resolveModulePath(fs::path(*parent_path), *path);
+  std::string url = Mod::pathToUrl(abs_path);
   args.GetReturnValue().Set(v8_value(isolate, url));
 }
 
-void Mod::clear_resolve_cache() {
+void Mod::clearResolveCache() {
   for (auto &entry : resolve_cache) {
     entry.second.Reset();
   }
   resolve_cache.clear();
 }
 
-std::string Mod::resolve_module_path(fs::path parent,
-                                     std::string_view specifier) {
+std::string Mod::resolveModulePath(fs::path parent,
+                                   std::string_view specifier) {
   fs::path abs_path = parent.parent_path() / fs::path(specifier);
   return abs_path.lexically_normal().string();
 }
 
-std::string Mod::path_to_url(std::string_view path) {
+std::string Mod::pathToUrl(std::string_view path) {
   if (path.find('%') == std::string_view::npos) {
     return ada::href_from_file(path);
   }

@@ -22,15 +22,13 @@ public:
   ModType type;
   ScriptType scriptType;
 
-  Mod(std::string_view fullpath, ModType type, ScriptType scriptType)
-      : fullpath(fullpath), type(type), scriptType(scriptType) {
+  Mod(std::string_view fullpath, ModType type)
+      : fullpath(fullpath), type(type) {
     if (type == ModType::kScript) {
-      url = Mod::path_to_url(fullpath);
+      url = Mod::pathToUrl(fullpath);
       dirname = fs::path(fullpath).parent_path().string();
     }
   }
-
-  ~Mod() { Mod::clear_resolve_cache(); }
 
   static ModType detectType(std::string_view specifier) {
     if(specifier.starts_with(kInternalPrefix))
@@ -47,28 +45,34 @@ public:
     return scriptType == ScriptType::kTypeScript;
   }
 
-  static void clear_resolve_cache();
+  v8::MaybeLocal<v8::Module> initialize(v8::Isolate *isolate);
 
-  static void exec_script(std::string_view);
+  void evaluate(v8::Isolate *isolate);
 
-  static void exec_internal(std::string_view);
+  int loadContent();
+
+  static void clearResolveCache();
+
+  static void execScript(std::string_view);
+
+  static void execInternal(std::string_view);
 
   /* parent path means full path to script file which loads given specifier */
-  static std::string resolve_module_path(fs::path parent,
+  static std::string resolveModulePath(fs::path parent,
                                          std::string_view specifier);
 
-  static inline std::string path_to_url(std::string_view);
+  static inline std::string pathToUrl(std::string_view);
 
   // JS API:
   static void resolve(const v8::FunctionCallbackInfo<v8::Value> &);
 
-  static v8::MaybeLocal<v8::Promise> dynamic_load(v8::Local<v8::Context>,
+  static v8::MaybeLocal<v8::Promise> dynamicImport(v8::Local<v8::Context>,
                                                   v8::Local<v8::Data>,
                                                   v8::Local<v8::Value>,
                                                   v8::Local<v8::String>,
                                                   v8::Local<v8::FixedArray>);
 
-  static void set_meta(v8::Local<v8::Context>, v8::Local<v8::Module>,
+  static void setMeta(v8::Local<v8::Context>, v8::Local<v8::Module>,
                        v8::Local<v8::Object>);
 
   static v8::MaybeLocal<v8::Module> load(v8::Local<v8::Context>,
