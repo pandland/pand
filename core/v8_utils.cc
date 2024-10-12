@@ -1,8 +1,9 @@
 #pragma once
+#include <string_view>
 #include <v8.h>
 
-inline v8::Local<v8::String> v8_value(v8::Isolate *isolate, const std::string &str) {
-    v8::MaybeLocal<v8::String> maybe_str = v8::String::NewFromUtf8(isolate, str.c_str(), v8::NewStringType::kNormal);
+inline v8::Local<v8::String> v8_value(v8::Isolate *isolate, std::string_view str) {
+    v8::MaybeLocal<v8::String> maybe_str = v8::String::NewFromUtf8(isolate, str.data(), v8::NewStringType::kNormal);
     if (maybe_str.IsEmpty()) {
         return v8::String::Empty(isolate);
     }
