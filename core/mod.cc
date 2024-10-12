@@ -1,8 +1,11 @@
 #include "mod.h"
+#include "pand.h"
 #include "v8_utils.cc"
 #include <ada.h>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string_view>
 
@@ -84,15 +87,71 @@ v8::MaybeLocal<v8::Module> Mod::initialize(v8::Isolate *isolate) {
                           v8::Local<v8::Value>(), false, false, true);
 
   v8::ScriptCompiler::Source script_source(source, origin);
-  v8::Local<v8::Module> module;
+  v8::Local<v8::Module> v8mod;
 
   if (v8::ScriptCompiler::CompileModule(isolate, &script_source)
-          .ToLocal(&module)) {
+          .ToLocal(&v8mod)) {
+    mods.emplace(v8mod->ScriptId(), this);
+    resolve_cache[fullpath].Reset(isolate, v8mod);
 
-    mods.emplace(module->ScriptId(), this);
-    resolve_cache[fullpath].Reset(isolate, module);
+    return v8mod;
+  }
 
-    return module;
+  return {};
+}
+
+std::string Mod::cannocialPath(std::string_view filepath) {
+  fs::path abs_path = fs::current_path() / fs::path(filepath);
+  return abs_path.lexically_normal().string();
+}
+
+void Mod::execScript(v8::Isolate *isolate, std::string_view filepath) {
+  std::string fullpath = Mod::cannocialPath(filepath);
+  Mod *mod = new Mod(fullpath, ModType::kScript);
+  return Mod::evaluate(isolate, mod);
+}
+
+void Mod::execInternal(v8::Isolate *isolate, std::string_view modulename) {
+  Mod *mod = new Mod(modulename, ModType::kInternal);
+  return Mod::evaluate(isolate, mod);
+}
+
+void Mod::evaluate(v8::Isolate *isolate, Mod *mod) {
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::MaybeLocal<v8::Module> result = mod->initialize(isolate);
+
+  if (result.IsEmpty())
+    return;
+
+  if (mod->loadContent())
+    return;
+
+  v8::Local<v8::Module> v8mod = result.ToLocalChecked();
+  bool intialized = v8mod->InstantiateModule(context, Mod::load).IsJust();
+  if (!intialized) {
+    printf("error: Unable to init module\n");
+    exit(1);
+  }
+
+  v8::MaybeLocal<v8::Value> evaluation = v8mod->Evaluate(context);
+  if (evaluation.IsEmpty()) {
+    printf("error: %s\n", "evaluation failed");
+    exit(1);
+  }
+
+  v8::Local<v8::Value> value = evaluation.ToLocalChecked();
+  if (value->IsPromise()) {
+    v8::Local<v8::Promise> promise = value.As<v8::Promise>();
+    if (promise->State() == v8::Promise::kRejected) {
+      v8::String::Utf8Value error(isolate, promise->Result());
+      v8::Local<v8::Message> errmsg =
+          v8::Exception::CreateMessage(isolate, promise->Result());
+      printf("error: Uncaught (in promise) %s\n", *error);
+      v8::String::Utf8Value errfile(isolate, errmsg->GetScriptResourceName());
+      printf("filename: %s\n", *errfile);
+      // Loader::report_details(errmsg, context);
+    }
   }
 }
 

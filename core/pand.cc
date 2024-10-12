@@ -4,10 +4,12 @@
 #include <pandio.h>
 #include <v8.h>
 
+#include "mod.h"
+
 namespace pand::core {
 
 Pand::Pand() {
-  ctx  = new pd_io_t;
+  ctx = new pd_io_t;
   pd_io_init(ctx);
 
   platform = v8::platform::NewDefaultPlatform();
@@ -19,6 +21,7 @@ Pand::Pand() {
 }
 
 Pand::~Pand() {
+  Mod::clearResolveCache();
   isolate->Dispose();
   v8::V8::Dispose();
   v8::V8::DisposePlatform();
@@ -33,13 +36,19 @@ Pand *Pand::get() {
   return instance;
 }
 
-void Pand::run(const std::string& entryfile) {
+void Pand::run(const std::string &entryfile) {
   Pand::run(entryfile, 0, nullptr);
 }
 
-void Pand::run(const std::string& entryfile, int argc, char *argv) {
+void Pand::run(const std::string &entryfile, int argc, char *argv) {
   v8::HandleScope handle_scope(isolate);
-  std::cout << "Run " << entryfile << std::endl; 
+  v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
+  v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
+  v8::Context::Scope context_scope(context);
+  v8::Isolate::Scope isolate_scope(isolate);
+  // Mod::execInternal("std:bootstrap");
+  isolate->SetHostInitializeImportMetaObjectCallback(Mod::setMeta);
+  Mod::execScript(isolate, entryfile);
 
   pd_io_run(ctx);
 }

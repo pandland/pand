@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <v8-isolate.h>
 #include <v8.h>
 
 namespace fs = std::filesystem;
@@ -31,49 +32,46 @@ public:
   }
 
   static ModType detectType(std::string_view specifier) {
-    if(specifier.starts_with(kInternalPrefix))
+    if (specifier.starts_with(kInternalPrefix))
       return ModType::kInternal;
 
     return ModType::kScript;
   }
 
-  inline bool isInternal() {
-    return type == ModType::kInternal;
-  }
+  inline bool isInternal() { return type == ModType::kInternal; }
 
-  inline bool isTS() {
-    return scriptType == ScriptType::kTypeScript;
-  }
+  inline bool isTS() { return scriptType == ScriptType::kTypeScript; }
 
   v8::MaybeLocal<v8::Module> initialize(v8::Isolate *isolate);
 
-  void evaluate(v8::Isolate *isolate);
+  static void evaluate(v8::Isolate *isolate, Mod *mod);
 
   int loadContent();
 
   static void clearResolveCache();
 
-  static void execScript(std::string_view);
+  static void execScript(v8::Isolate *, std::string_view);
 
-  static void execInternal(std::string_view);
+  static void execInternal(v8::Isolate *, std::string_view);
 
+  static std::string cannocialPath(std::string_view);
   /* parent path means full path to script file which loads given specifier */
   static std::string resolveModulePath(fs::path parent,
-                                         std::string_view specifier);
+                                       std::string_view specifier);
 
-  static inline std::string pathToUrl(std::string_view);
+  static std::string pathToUrl(std::string_view);
 
   // JS API:
   static void resolve(const v8::FunctionCallbackInfo<v8::Value> &);
 
   static v8::MaybeLocal<v8::Promise> dynamicImport(v8::Local<v8::Context>,
-                                                  v8::Local<v8::Data>,
-                                                  v8::Local<v8::Value>,
-                                                  v8::Local<v8::String>,
-                                                  v8::Local<v8::FixedArray>);
+                                                   v8::Local<v8::Data>,
+                                                   v8::Local<v8::Value>,
+                                                   v8::Local<v8::String>,
+                                                   v8::Local<v8::FixedArray>);
 
   static void setMeta(v8::Local<v8::Context>, v8::Local<v8::Module>,
-                       v8::Local<v8::Object>);
+                      v8::Local<v8::Object>);
 
   static v8::MaybeLocal<v8::Module> load(v8::Local<v8::Context>,
                                          v8::Local<v8::String>,
