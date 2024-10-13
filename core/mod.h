@@ -51,6 +51,8 @@ public:
 
   static void clearMods();
 
+  static Mod *find(int);
+
   static void execScript(v8::Isolate *, std::string_view);
 
   static void execInternal(v8::Isolate *, std::string_view);

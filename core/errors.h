@@ -8,8 +8,7 @@ public:
 
   static void promiseRejectedCallback(v8::PromiseRejectMessage);
 
-  static void reportDetails(v8::Local<v8::Message> msg,
-                            v8::Local<v8::Context> context);
+  static void throwCritical(v8::Local<v8::Value>);
 
   static void clearPendingRejects();
 };

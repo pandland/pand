@@ -16,6 +16,14 @@ namespace pand::core {
 std::unordered_map<int, Mod *> mods;
 std::unordered_map<std::string, v8::Global<v8::Module>> resolve_cache;
 
+Mod * Mod::find(int id) {
+  auto it = mods.find(id);
+  if (it == mods.end()) {
+    return nullptr;
+  }
+  return it->second;
+}
+
 v8::MaybeLocal<v8::Module>
 Mod::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
           v8::Local<v8::FixedArray> import_attributes,
