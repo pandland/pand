@@ -53,6 +53,67 @@ Mod::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
   return result;
 }
 
+// await import()
+v8::MaybeLocal<v8::Promise> Mod::dynamicImport(
+    v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options,
+    v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier,
+    v8::Local<v8::FixedArray> import_attributes) {
+  v8::Isolate *isolate = context->GetIsolate();
+  v8::Local<v8::Promise::Resolver> resolver =
+      v8::Promise::Resolver::New(context).ToLocalChecked();
+
+  v8::String::Utf8Value resource(isolate, resource_name);
+  v8::String::Utf8Value specifier_str(isolate, specifier);
+
+  std::string_view parent_path(*resource);
+  std::string_view specifierName(*specifier_str);
+
+  ModType type = Mod::detectType(specifierName);
+  std::string path = (type == ModType::kInternal)
+                         ? std::string(specifierName)
+                         : Mod::resolveModulePath(parent_path, specifierName);
+
+  // try to load from cache
+  v8::MaybeLocal<v8::Module> v8mod;
+  auto cached_module = resolve_cache.find(path);
+  if (cached_module != resolve_cache.end()) {
+    v8mod = cached_module->second.Get(isolate);
+  } else {
+    Mod *mod = new Mod(path, type);
+    v8mod = mod->initialize(isolate);
+  }
+
+  if (v8mod.IsEmpty()) {
+    resolver
+        ->Reject(context, v8::Exception::Error(v8::String::NewFromUtf8Literal(
+                              isolate, "Module not found")))
+        .Check();
+  } else {
+    v8::Local<v8::Module> v8_mod = v8mod.ToLocalChecked();
+    if (v8_mod->InstantiateModule(context, Mod::load).IsJust()) {
+      v8::Local<v8::Value> val;
+      if (v8_mod->Evaluate(context).ToLocal(&val)) {
+        v8::Local<v8::Value> namespace_obj = v8_mod->GetModuleNamespace();
+        resolver->Resolve(context, namespace_obj).Check();
+        return resolver->GetPromise();
+      } else {
+        resolver
+            ->Reject(context,
+                     v8::Exception::Error(v8::String::NewFromUtf8Literal(
+                         isolate, "Error evaluating module")))
+            .Check();
+      }
+    } else {
+      resolver
+          ->Reject(context, v8::Exception::Error(v8::String::NewFromUtf8Literal(
+                                isolate, "Error instantiating module")))
+          .Check();
+    }
+  }
+
+  return resolver->GetPromise();
+}
+
 int Mod::loadContent() {
   if (isInternal()) {
     auto internal_src = js_internals.find(fullpath);
@@ -217,6 +278,13 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void Mod::clearResolveCache() {
   for (auto &entry : resolve_cache) {
     entry.second.Reset();
+  }
+  resolve_cache.clear();
+}
+
+void Mod::clearMods() {
+  for (auto &entry : mods) {
+    delete entry.second;
   }
   resolve_cache.clear();
 }

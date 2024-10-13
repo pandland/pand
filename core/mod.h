@@ -49,6 +49,8 @@ public:
 
   static void clearResolveCache();
 
+  static void clearMods();
+
   static void execScript(v8::Isolate *, std::string_view);
 
   static void execInternal(v8::Isolate *, std::string_view);

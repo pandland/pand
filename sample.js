@@ -1,1 +1,4 @@
-console.log("Hello World");
+const test = await import('./samples/test.mjs');
+
+console.log(Runtime.pid);
+test.test1()

@@ -1,5 +1,4 @@
 #include "pand.h"
-#include "pandio/core.h"
 #include <iostream>
 #include <pandio.h>
 #include <v8.h>
@@ -23,6 +22,7 @@ Pand::Pand() {
 }
 
 Pand::~Pand() {
+  Mod::clearMods();
   Mod::clearResolveCache();
   isolate->Dispose();
   v8::V8::Dispose();
@@ -45,7 +45,6 @@ void Pand::run(const std::string &entryfile) {
 void Pand::run(const std::string &entryfile, int argc, char *argv) {
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
-  // Mod::execInternal("std:bootstrap");
 
   v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
   Runtime::initialize(runtime_template, isolate);
@@ -56,6 +55,7 @@ void Pand::run(const std::string &entryfile, int argc, char *argv) {
   v8::Isolate::Scope isolate_scope(isolate);
 
   isolate->SetHostInitializeImportMetaObjectCallback(Mod::setMeta);
+  isolate->SetHostImportModuleDynamicallyCallback(Mod::dynamicImport);
   Mod::execInternal(isolate, "std:bootstrap");
   Mod::execScript(isolate, entryfile);
 
