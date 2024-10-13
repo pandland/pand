@@ -1,1 +1,1 @@
-throw new Error("xdd");
+console.log("Hello World");

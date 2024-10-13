@@ -5,6 +5,8 @@
 #include <v8.h>
 
 #include "mod.h"
+#include "runtime.h"
+#include "v8_utils.cc"
 
 namespace pand::core {
 
@@ -43,11 +45,18 @@ void Pand::run(const std::string &entryfile) {
 void Pand::run(const std::string &entryfile, int argc, char *argv) {
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
+  // Mod::execInternal("std:bootstrap");
+
+  v8::Local<v8::ObjectTemplate> runtime_template = v8::ObjectTemplate::New(isolate);
+  Runtime::initialize(runtime_template, isolate);
+  global->Set(v8_symbol(isolate, "Runtime"), runtime_template);
+
   v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
   v8::Context::Scope context_scope(context);
   v8::Isolate::Scope isolate_scope(isolate);
-  // Mod::execInternal("std:bootstrap");
+
   isolate->SetHostInitializeImportMetaObjectCallback(Mod::setMeta);
+  Mod::execInternal(isolate, "std:bootstrap");
   Mod::execScript(isolate, entryfile);
 
   pd_io_run(ctx);

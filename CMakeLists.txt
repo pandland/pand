@@ -19,6 +19,8 @@ add_executable(pand
     core/pand.cc
     core/mod.h
     core/mod.cc
+    core/runtime.h
+    core/runtime.cc
     core/main.cc
 )
 
