@@ -68,7 +68,7 @@ void Pand::run(const std::string &entryfile, int argc, char *argv) {
   v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
   v8::Context::Scope context_scope(context);
 
-  isolate->SetCaptureStackTraceForUncaughtExceptions(true);
+  isolate->SetCaptureStackTraceForUncaughtExceptions(true, 10);
   isolate->SetPromiseRejectCallback(Errors::promiseRejectedCallback);
   isolate->SetHostInitializeImportMetaObjectCallback(Mod::setMeta);
   isolate->SetHostImportModuleDynamicallyCallback(Mod::dynamicImport);

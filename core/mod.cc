@@ -32,13 +32,12 @@ Mod::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
   v8::String::Utf8Value specifierUtf8(isolate, specifier);
   std::string_view specifierName = *specifierUtf8;
 
-  auto modIter = mods.find(referrer->ScriptId());
-  if (modIter == mods.end()) {
+  Mod *parent = Mod::find(referrer->ScriptId());
+  if (!parent) {
     printf("error: Unable to find referrer's module\n");
     return v8::MaybeLocal<v8::Module>();
   }
 
-  Mod *parent = modIter->second;
   ModType type = Mod::detectType(specifierName);
   std::string path =
       (type == ModType::kInternal)
@@ -228,10 +227,9 @@ void Mod::evaluate(v8::Isolate *isolate, Mod *mod) {
 
 void Mod::setMeta(v8::Local<v8::Context> context, v8::Local<v8::Module> module,
                   v8::Local<v8::Object> meta) {
-  auto result = mods.find(module->ScriptId());
-  if (result != mods.end()) {
+  auto mod = Mod::find(module->ScriptId());
+  if (mod && !mod->isInternal()) {
     v8::Isolate *isolate = context->GetIsolate();
-    Mod *mod = result->second;
 
     meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, mod->url))
         .Check();
