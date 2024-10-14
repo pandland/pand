@@ -23,6 +23,8 @@ add_executable(pand
     core/runtime.cc
     core/errors.h
     core/errors.cc
+    core/timer.h
+    core/timer.cc
     core/main.cc
 )
 
