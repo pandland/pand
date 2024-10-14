@@ -27,3 +27,6 @@ globalThis.setInterval = (cb, delay, ...args) => {
 
   return timer.setInterval(delay);
 }
+
+globalThis.clearInterval = Timer.clear;
+globalThis.clearTimeout = Timer.clear;

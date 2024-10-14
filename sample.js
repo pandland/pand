@@ -1,12 +1,15 @@
-const id = setTimeout((arg) => {
-  console.log(`timeout callback with arg: ${arg}`);
-}, 5000, 200);
-
-console.log(`timeout id: ${id}`);
-
 let no = 1;
 
-setInterval(() => {
+const intervalId = setInterval(() => {
   console.log(`interval callback #${no}`);
   no++;
-}, 1000);
+}, 500);
+
+console.log(`Interval id: ${intervalId}`);
+
+const id = setTimeout((arg) => {
+  console.log(`timeout callback with arg: ${arg}`);
+  clearInterval(intervalId);
+}, 4000, 200);
+
+console.log(`timeout id: ${id}`);

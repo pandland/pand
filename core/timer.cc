@@ -8,6 +8,7 @@
 
 namespace pand::core {
 
+std::unordered_map<int, Timer *> active_timers;
 int Timer::counter = 1;
 
 void Timer::initialize(v8::Local<v8::Object> exports) {
@@ -29,9 +30,7 @@ void Timer::initialize(v8::Local<v8::Object> exports) {
       v8::FunctionTemplate::New(isolate, Timer::setInterval);
   t->PrototypeTemplate()->Set(isolate, "setInterval", setIntervalT);
 
-  v8::Local<v8::FunctionTemplate> clearT =
-      v8::FunctionTemplate::New(isolate, Timer::clear);
-  t->PrototypeTemplate()->Set(isolate, "clear", clearT);
+  t->Set(isolate, "clear", v8::FunctionTemplate::New(isolate, Timer::clear));
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
@@ -44,9 +43,9 @@ void Timer::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
   assert(args.IsConstructCall());
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  // TODO: read type from args
   Timer *timer = new Timer(args.This());
   args.This()->SetAlignedPointerInInternalField(0, timer);
+  active_timers[timer->id] = timer;
 }
 
 void Timer::setInterval(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -75,7 +74,22 @@ void Timer::setTimeout(const v8::FunctionCallbackInfo<v8::Value> &args) {
   return args.GetReturnValue().Set(v8::Number::New(isolate, timer->id));
 }
 
-void Timer::clear(const v8::FunctionCallbackInfo<v8::Value> &args) {}
+void Timer::clear(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  int64_t id = args[0]->IntegerValue(context).ToChecked();
+  auto iter = active_timers.find(id);
+  if (iter == active_timers.end()) {
+    return;
+  }
+
+  Timer *timer = iter->second;
+  pd_timer_stop(&timer->handle);
+  active_timers.erase(timer->id);
+  delete timer;
+}
 
 void Timer::callCallback(Timer *timer) {
   Pand *pand = Pand::get();
@@ -96,6 +110,8 @@ void Timer::callCallback(Timer *timer) {
 void Timer::onTimeout(pd_timer_t *handle) {
   Timer *timer = static_cast<Timer *>(handle->data);
   Timer::callCallback(timer);
+
+  active_timers.erase(timer->id);
   delete timer;
 }
 
