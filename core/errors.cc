@@ -81,20 +81,19 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
   v8::Local<v8::Message> err = v8::Exception::CreateMessage(isolate, value);
 
   std::cerr << "error: Uncaught (in promise) " << *err_str << '\n';
-
   // module should be found only if err object extends Error class.
-  const Mod *mod = Mod::find(err->GetScriptOrigin().ScriptId());
+  Mod *mod = Mod::find(err->GetScriptOrigin().ScriptId());
   if (!mod) {
     return pand->exit(1);
   }
 
   // log error:
+  int current_line = 1;
   int line = err->GetLineNumber(context).FromJust();
   int col = err->GetStartColumn();
 
   std::stringstream ss(mod->content);
   std::string str;
-  int current_line = 1;
 
   while (std::getline(ss, str)) {
     if (current_line == line) {
@@ -108,7 +107,23 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
     current_line++;
   }
 
-  std::cerr << "  at: " << mod->url << ':' << line << ':' << col << std::endl;
+  v8::Local<v8::StackTrace> stack_trace = err->GetStackTrace();
+  if (!stack_trace.IsEmpty()) {
+    int frame_count = stack_trace->GetFrameCount();
+    for (int i = 0; i < frame_count; i++) {
+      v8::Local<v8::StackFrame> frame = stack_trace->GetFrame(isolate, i);
+
+      v8::String::Utf8Value script_name(isolate, frame->GetScriptName());
+      v8::String::Utf8Value function_name(isolate, frame->GetFunctionName());
+      int line_number = frame->GetLineNumber();
+      int column = frame->GetColumn();
+
+      std::cerr << "  at "
+                << (function_name.length() > 0 ? *function_name : "(anonymous)")
+                << " (" << *script_name << ":" << line_number << ":" << column
+                << ")\n";
+    }
+  }
 
   pand->exit(1);
 }

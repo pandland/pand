@@ -152,7 +152,7 @@ v8::MaybeLocal<v8::Module> Mod::initialize(v8::Isolate *isolate) {
   }
 
   v8::Local<v8::String> source = v8_value(isolate, content);
-  v8::ScriptOrigin origin(v8_value(isolate, fullpath), 0, 0, true, -1,
+  v8::ScriptOrigin origin(v8_value(isolate, url), 0, 0, true, -1,
                           v8::Local<v8::Value>(), false, false, true);
 
   v8::ScriptCompiler::Source script_source(source, origin);

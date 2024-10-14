@@ -1,3 +1,3 @@
-const test = await import('./samples/test.mjs');
-test.test1()
+import { test1 } from './samples/test.mjs';
 
+test1();

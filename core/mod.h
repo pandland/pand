@@ -27,6 +27,8 @@ public:
     if (type == ModType::kScript) {
       url = Mod::pathToUrl(fullpath);
       dirname = fs::path(fullpath).parent_path().string();
+    } else {
+      url = fullpath;
     }
   }
 
