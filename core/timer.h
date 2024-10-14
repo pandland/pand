@@ -11,10 +11,19 @@ class Timer {
   int id;
   pd_timer_t handle;
   Timer::Type type;
+  v8::Persistent<v8::Object> obj;
 
 public:
-  Timer(int id, Timer::Type type) : id(id), type(type) {
-    pd_timer_init(Pand::get()->ctx, &handle);
+  Timer(Timer::Type type, v8::Local<v8::Object> obj) : type(type) {
+    Pand *pand = Pand::get();
+    pd_timer_init(pand->ctx, &handle);
+    this->handle.data = this;
+    this->id = Timer::counter++;
+    this->obj.Reset(pand->isolate, obj);
+  }
+
+  ~Timer() {
+    this->obj.Reset();
   }
 
   static int counter;
@@ -27,6 +36,8 @@ public:
   static void setTimeout(const v8::FunctionCallbackInfo<v8::Value> &args);
 
   static void setInterval(const v8::FunctionCallbackInfo<v8::Value> &args);
+
+  static void onTimeout(pd_timer_t *);
 
   static void clear(const v8::FunctionCallbackInfo<v8::Value> &args);
 };

@@ -1,3 +1,4 @@
-import { test1 } from './samples/test.mjs';
+const timers = Runtime.bind("timer");
+const Timer = timers.Timer;
 
-test1();
+console.log(new Timer().setTimeout);
