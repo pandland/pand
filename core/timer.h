@@ -6,15 +6,12 @@
 namespace pand::core {
 
 class Timer {
-  enum class Type { INTERVAL, TIMEOUT };
-
   int id;
   pd_timer_t handle;
-  Timer::Type type;
   v8::Persistent<v8::Object> obj;
 
 public:
-  Timer(Timer::Type type, v8::Local<v8::Object> obj) : type(type) {
+  Timer(v8::Local<v8::Object> obj) {
     Pand *pand = Pand::get();
     pd_timer_init(pand->ctx, &handle);
     this->handle.data = this;
@@ -22,9 +19,7 @@ public:
     this->obj.Reset(obj->GetIsolate(), obj);
   }
 
-  ~Timer() {
-    this->obj.Reset();
-  }
+  ~Timer() { this->obj.Reset(); }
 
   static int counter;
 
@@ -38,6 +33,10 @@ public:
   static void setInterval(const v8::FunctionCallbackInfo<v8::Value> &args);
 
   static void onTimeout(pd_timer_t *);
+
+  static void onInterval(pd_timer_t *);
+
+  static void callCallback(Timer *);
 
   static void clear(const v8::FunctionCallbackInfo<v8::Value> &args);
 };

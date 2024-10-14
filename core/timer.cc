@@ -45,7 +45,7 @@ void Timer::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
   // TODO: read type from args
-  Timer *timer = new Timer(Timer::Type::TIMEOUT, args.This());
+  Timer *timer = new Timer(args.This());
   args.This()->SetAlignedPointerInInternalField(0, timer);
 }
 
@@ -57,7 +57,7 @@ void Timer::setInterval(const v8::FunctionCallbackInfo<v8::Value> &args) {
   int64_t timeout = args[0]->IntegerValue(context).ToChecked();
   Timer *timer =
       static_cast<Timer *>(args.This()->GetAlignedPointerFromInternalField(0));
-  pd_timer_repeat(&timer->handle, Timer::onTimeout, timeout);
+  pd_timer_repeat(&timer->handle, Timer::onInterval, timeout);
 
   return args.GetReturnValue().Set(v8::Number::New(isolate, timer->id));
 }
@@ -77,10 +77,8 @@ void Timer::setTimeout(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
 void Timer::clear(const v8::FunctionCallbackInfo<v8::Value> &args) {}
 
-void Timer::onTimeout(pd_timer_t *handle) {
+void Timer::callCallback(Timer *timer) {
   Pand *pand = Pand::get();
-  Timer *timer = static_cast<Timer *>(handle->data);
-
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -93,8 +91,17 @@ void Timer::onTimeout(pd_timer_t *handle) {
 
   v8::Local<v8::Value> args[0] = {};
   callback->Call(context, v8::Undefined(isolate), 1, args).ToLocalChecked();
+}
 
+void Timer::onTimeout(pd_timer_t *handle) {
+  Timer *timer = static_cast<Timer *>(handle->data);
+  Timer::callCallback(timer);
   delete timer;
+}
+
+void Timer::onInterval(pd_timer_t *handle) {
+  Timer *timer = static_cast<Timer *>(handle->data);
+  Timer::callCallback(timer);
 }
 
 } // namespace pand::core

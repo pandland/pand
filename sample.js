@@ -3,3 +3,10 @@ const id = setTimeout((arg) => {
 }, 5000, 200);
 
 console.log(`timeout id: ${id}`);
+
+let no = 1;
+
+setInterval(() => {
+  console.log(`interval callback #${no}`);
+  no++;
+}, 1000);
