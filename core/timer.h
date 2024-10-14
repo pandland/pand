@@ -19,7 +19,7 @@ public:
     pd_timer_init(pand->ctx, &handle);
     this->handle.data = this;
     this->id = Timer::counter++;
-    this->obj.Reset(pand->isolate, obj);
+    this->obj.Reset(obj->GetIsolate(), obj);
   }
 
   ~Timer() {
