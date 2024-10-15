@@ -23,7 +23,6 @@ public:
 
   static int counter;
 
-  // JS API:
   static void initialize(v8::Local<v8::Object> exports);
 
   static void constructor(const v8::FunctionCallbackInfo<v8::Value> &args);
@@ -36,7 +35,7 @@ public:
 
   static void onInterval(pd_timer_t *);
 
-  static void callCallback(Timer *);
+  static void makeCallback(Timer *);
 
   static void clear(const v8::FunctionCallbackInfo<v8::Value> &args);
 };

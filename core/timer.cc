@@ -87,7 +87,7 @@ void Timer::clear(const v8::FunctionCallbackInfo<v8::Value> &args) {
   delete timer;
 }
 
-void Timer::callCallback(Timer *timer) {
+void Timer::makeCallback(Timer *timer) {
   Pand *pand = Pand::get();
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
@@ -109,7 +109,7 @@ void Timer::callCallback(Timer *timer) {
 
 void Timer::onTimeout(pd_timer_t *handle) {
   Timer *timer = static_cast<Timer *>(handle->data);
-  Timer::callCallback(timer);
+  Timer::makeCallback(timer);
 
   active_timers.erase(timer->id);
   delete timer;
@@ -117,7 +117,7 @@ void Timer::onTimeout(pd_timer_t *handle) {
 
 void Timer::onInterval(pd_timer_t *handle) {
   Timer *timer = static_cast<Timer *>(handle->data);
-  Timer::callCallback(timer);
+  Timer::makeCallback(timer);
 }
 
 } // namespace pand::core

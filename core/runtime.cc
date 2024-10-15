@@ -48,7 +48,7 @@ void Runtime::exit(const v8::FunctionCallbackInfo<v8::Value> &args) {
                  ->Int32Value(args.GetIsolate()->GetCurrentContext())
                  .ToChecked();
   }
-  std::exit(status);
+  Pand::get()->exit(status);
 }
 
 void Runtime::env(const v8::FunctionCallbackInfo<v8::Value> &args) {
