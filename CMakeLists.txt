@@ -25,6 +25,8 @@ add_executable(pand
     core/errors.cc
     core/timer.h
     core/timer.cc
+    core/tcp.h
+    core/tcp.cc
     core/main.cc
 )
 

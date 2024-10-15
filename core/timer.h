@@ -23,13 +23,13 @@ public:
 
   static int counter;
 
-  static void initialize(v8::Local<v8::Object> exports);
+  static void initialize(v8::Local<v8::Object>);
 
-  static void constructor(const v8::FunctionCallbackInfo<v8::Value> &args);
+  static void constructor(const v8::FunctionCallbackInfo<v8::Value> &);
 
-  static void setTimeout(const v8::FunctionCallbackInfo<v8::Value> &args);
+  static void setTimeout(const v8::FunctionCallbackInfo<v8::Value> &);
 
-  static void setInterval(const v8::FunctionCallbackInfo<v8::Value> &args);
+  static void setInterval(const v8::FunctionCallbackInfo<v8::Value> &);
 
   static void onTimeout(pd_timer_t *);
 
@@ -37,7 +37,7 @@ public:
 
   static void makeCallback(Timer *);
 
-  static void clear(const v8::FunctionCallbackInfo<v8::Value> &args);
+  static void clear(const v8::FunctionCallbackInfo<v8::Value> &);
 };
 
 } // namespace pand::core
