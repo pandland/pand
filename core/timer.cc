@@ -1,10 +1,6 @@
 #include "timer.h"
+#include "errors.h"
 #include "v8_utils.cc"
-#include <iostream>
-#include <v8-context.h>
-#include <v8-isolate.h>
-#include <v8-local-handle.h>
-#include <v8-object.h>
 
 namespace pand::core {
 
@@ -103,8 +99,12 @@ void Timer::callCallback(Timer *timer) {
           .ToLocalChecked()
           .As<v8::Function>();
 
+  v8::TryCatch try_catch(isolate);
   v8::Local<v8::Value> args[0] = {};
-  callback->Call(context, v8::Undefined(isolate), 1, args).ToLocalChecked();
+  auto result = callback->Call(context, v8::Undefined(isolate), 0, args);
+  if(try_catch.HasCaught()) {
+    Errors::throwCritical(try_catch.Exception());
+  }
 }
 
 void Timer::onTimeout(pd_timer_t *handle) {
