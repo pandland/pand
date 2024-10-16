@@ -12,7 +12,6 @@ public:
     Pand *pand = Pand::get();
     pd_tcp_server_init(pand->ctx, &this->handle);
     this->handle.data = this;
-    this->handle.on_connection = TcpServer::onConnection;
     this->obj.Reset(obj->GetIsolate(), obj);
   }
 

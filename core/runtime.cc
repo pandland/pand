@@ -1,6 +1,7 @@
 #include "runtime.h"
-#include "timer.h"
 #include "tcp.h"
+#include "tcp_server.h"
+#include "timer.h"
 #include "v8_utils.cc"
 #include <filesystem>
 #include <iostream>
@@ -90,6 +91,7 @@ void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
     Timer::initialize(exports);
   } else if (name == "tcp") {
     TcpStream::initialize(exports);
+    TcpServer::initialize(exports);
   }
 
   args.GetReturnValue().Set(exports);

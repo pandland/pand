@@ -49,11 +49,7 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
   t->PrototypeTemplate()->Set(isolate, "write", writeT);
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
-  exports
-      ->Set(context,
-            v8::String::NewFromUtf8(isolate, "TcpStream").ToLocalChecked(),
-            func)
-      .ToChecked();
+  exports->Set(context, v8_symbol(isolate, "TcpStream"), func).ToChecked();
 }
 
 void TcpStream::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -72,7 +68,8 @@ void TcpStream::setKeepAlive(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
-
+  if (!stream)
+    return;
   bool enable = args[0]->BooleanValue(isolate);
   int64_t delay = args[1]->IntegerValue(context).FromMaybe(0);
   pd_tcp_keepalive(&stream->handle, enable, delay);
