@@ -1,10 +1,6 @@
 #include "tcp.h"
 #include "errors.h"
 #include "v8_utils.cc"
-#include <v8-isolate.h>
-#include <v8-local-handle.h>
-#include <v8-object.h>
-#include <v8-value.h>
 
 namespace pand::core {
 

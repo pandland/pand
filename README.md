@@ -7,7 +7,7 @@
 <div align="center">
   <a href="https://github.com/pandland/pand/tree/main/docs">Documentation</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
-  <a href="https://pandland.github.io/pand">Website</a>
+  <a href="https://pandland.github.io">Website</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="https://github.com/pandland/pand/issues/new">Issues</a>
   <br />
