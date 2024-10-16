@@ -41,6 +41,9 @@ public:
 
   static void write(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void makeCallback(TcpStream *, v8::Isolate *, const char *,
+                           v8::Local<v8::Value> *, size_t);
+
   static void onConnect(pd_tcp_t *, int);
 
   static void onData(pd_tcp_t *, char *, size_t);

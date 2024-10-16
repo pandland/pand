@@ -1,6 +1,9 @@
 #include "tcp.h"
-#include "pandio/tcp.h"
+#include "errors.h"
 #include "v8_utils.cc"
+#include <v8-isolate.h>
+#include <v8-local-handle.h>
+#include <v8-value.h>
 
 namespace pand::core {
 
@@ -159,6 +162,28 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   pd_tcp_write(&stream->handle, op);
 }
 
+void TcpStream::makeCallback(TcpStream *stream, v8::Isolate *isolate,
+                             const char *funcName, v8::Local<v8::Value> *argv,
+                             size_t argc) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+  v8::Local<v8::Function> callback =
+      obj->Get(context, v8_symbol(isolate, funcName))
+          .ToLocalChecked()
+          .As<v8::Function>();
+
+  if (callback.IsEmpty()) {
+    return;
+  }
+
+  v8::TryCatch try_catch(isolate);
+  auto result = callback->Call(context, v8::Undefined(isolate), argc, argv);
+  if (try_catch.HasCaught()) {
+    Errors::throwCritical(try_catch.Exception());
+  }
+}
+
 // callback handlers:
 void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
@@ -172,23 +197,30 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   }
 }
 
-void TcpStream::onData(pd_tcp_t *handle, char *buf, size_t size) {
-  printf("Received data with len: %zu\n", size);
-  printf("%.*s\n", (int)size, buf);
-  free(buf); // our pandio lib uses C allocators
-  // TODO: make callback call
+void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
+  Pand *pand = Pand::get();
+  TcpStream *stream = static_cast<TcpStream *>(handle->data);
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+
+  v8::Local<v8::String> data =
+      v8::String::NewFromUtf8(isolate, buffer, v8::NewStringType::kNormal, size)
+          .ToLocalChecked();
+  v8::Local<v8::Value> argv = {data};
+  TcpStream::makeCallback(stream, isolate, "onData", &argv, 1);
+
+  // TODO: make ability to create own allocator in pandiolib
+  free(buffer); // our pandio uses C allocators
 }
 
 void TcpStream::onWrite(pd_write_t *op, int status) {
   delete op->data.buf;
   delete op;
-  // TODO: make callback call
 }
 
 void TcpStream::onClose(pd_tcp_t *handle) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   delete stream;
-  // TODO: make callback call
 }
 
 } // namespace pand::core
