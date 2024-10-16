@@ -3,6 +3,7 @@
 #include "v8_utils.cc"
 #include <v8-isolate.h>
 #include <v8-local-handle.h>
+#include <v8-object.h>
 #include <v8-value.h>
 
 namespace pand::core {
@@ -112,6 +113,8 @@ void TcpStream::shutdown(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
+  if (!stream)
+    return;
   pd_tcp_shutdown(&stream->handle);
 }
 
@@ -121,6 +124,9 @@ void TcpStream::destroy(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
+  if (!stream)
+    return;
+  
   pd_tcp_close(&stream->handle);
 }
 
@@ -130,6 +136,9 @@ void TcpStream::pause(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
+  if (!stream)
+    return;
+
   pd_tcp_pause(&stream->handle);
 }
 
@@ -139,6 +148,9 @@ void TcpStream::resume(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
+  if (!stream)
+    return;
+  
   pd_tcp_resume(&stream->handle);
 }
 
@@ -149,6 +161,8 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
+  if (!stream)
+    return;
 
   // TODO: we do not have Buffer class yet, so we operate on strings...
   v8::Local<v8::String> data = args[0]->ToString(context).ToLocalChecked();
@@ -219,7 +233,14 @@ void TcpStream::onWrite(pd_write_t *op, int status) {
 }
 
 void TcpStream::onClose(pd_tcp_t *handle) {
+  Pand *pand = Pand::get();
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+  obj->SetAlignedPointerInInternalField(0, nullptr);
+  
   delete stream;
 }
 
