@@ -8,6 +8,10 @@ stream.onData = (data) => {
   console.log(`Received data:\n${data}`);
 }
 
+stream.onClose = () => {
+  console.log("Connection closed");
+}
+
 setTimeout(() => {
   stream.write("Hello from JavaScript land\n");
   stream.resume();

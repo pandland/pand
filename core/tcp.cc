@@ -126,7 +126,7 @@ void TcpStream::destroy(const v8::FunctionCallbackInfo<v8::Value> &args) {
       args.This()->GetAlignedPointerFromInternalField(0));
   if (!stream)
     return;
-  
+
   pd_tcp_close(&stream->handle);
 }
 
@@ -150,7 +150,7 @@ void TcpStream::resume(const v8::FunctionCallbackInfo<v8::Value> &args) {
       args.This()->GetAlignedPointerFromInternalField(0));
   if (!stream)
     return;
-  
+
   pd_tcp_resume(&stream->handle);
 }
 
@@ -176,12 +176,11 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   pd_tcp_write(&stream->handle, op);
 }
 
-void TcpStream::makeCallback(TcpStream *stream, v8::Isolate *isolate,
+void TcpStream::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
                              const char *funcName, v8::Local<v8::Value> *argv,
                              size_t argc) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
   v8::Local<v8::Function> callback =
       obj->Get(context, v8_symbol(isolate, funcName))
           .ToLocalChecked()
@@ -221,7 +220,8 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
       v8::String::NewFromUtf8(isolate, buffer, v8::NewStringType::kNormal, size)
           .ToLocalChecked();
   v8::Local<v8::Value> argv = {data};
-  TcpStream::makeCallback(stream, isolate, "onData", &argv, 1);
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+  TcpStream::makeCallback(obj, isolate, "onData", &argv, 1);
 
   // TODO: make ability to create own allocator in pandiolib
   free(buffer); // our pandio uses C allocators
@@ -237,10 +237,11 @@ void TcpStream::onClose(pd_tcp_t *handle) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
-  
+
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+  TcpStream::makeCallback(obj, isolate, "onClose", {}, 0);
   obj->SetAlignedPointerInInternalField(0, nullptr);
-  
+
   delete stream;
 }
 
