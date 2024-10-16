@@ -1,4 +1,5 @@
 #include "tcp.h"
+#include "pandio/tcp.h"
 #include "v8_utils.cc"
 
 namespace pand::core {
@@ -42,6 +43,10 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> resumeT =
       v8::FunctionTemplate::New(isolate, TcpStream::resume);
   t->PrototypeTemplate()->Set(isolate, "resume", resumeT);
+
+  v8::Local<v8::FunctionTemplate> writeT =
+      v8::FunctionTemplate::New(isolate, TcpStream::write);
+  t->PrototypeTemplate()->Set(isolate, "write", writeT);
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
@@ -134,6 +139,26 @@ void TcpStream::resume(const v8::FunctionCallbackInfo<v8::Value> &args) {
   pd_tcp_resume(&stream->handle);
 }
 
+void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  TcpStream *stream = static_cast<TcpStream *>(
+      args.This()->GetAlignedPointerFromInternalField(0));
+
+  // TODO: we do not have Buffer class yet, so we operate on strings...
+  v8::Local<v8::String> data = args[0]->ToString(context).ToLocalChecked();
+  size_t size = data->Utf8Length(isolate);
+  char *buffer = new char[size];
+  data->WriteUtf8(isolate, buffer, size, nullptr,
+                  v8::String::NO_NULL_TERMINATION);
+
+  pd_write_t *op = new pd_write_t;
+  pd_write_init(op, buffer, size, TcpStream::onWrite);
+  pd_tcp_write(&stream->handle, op);
+}
+
 // callback handlers:
 void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
@@ -150,13 +175,20 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
 void TcpStream::onData(pd_tcp_t *handle, char *buf, size_t size) {
   printf("Received data with len: %zu\n", size);
   printf("%.*s\n", (int)size, buf);
-  free(buf);
-  pd_tcp_close(handle);
+  free(buf); // our pandio lib uses C allocators
+  // TODO: make callback call
+}
+
+void TcpStream::onWrite(pd_write_t *op, int status) {
+  delete op->data.buf;
+  delete op;
+  // TODO: make callback call
 }
 
 void TcpStream::onClose(pd_tcp_t *handle) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   delete stream;
+  // TODO: make callback call
 }
 
 } // namespace pand::core

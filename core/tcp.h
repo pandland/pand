@@ -39,9 +39,13 @@ public:
 
   static void resume(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void write(const v8::FunctionCallbackInfo<v8::Value> &);
+
   static void onConnect(pd_tcp_t *, int);
 
   static void onData(pd_tcp_t *, char *, size_t);
+
+  static void onWrite(pd_write_t *, int);
 
   static void onClose(pd_tcp_t *);
 };

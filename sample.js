@@ -5,5 +5,11 @@ stream.connect("127.0.0.1", 8000);
 stream.pause();
 
 setTimeout(() => {
+  stream.write("Hello from JavaScript land\n");
   stream.resume();
-}, 10 * 1000);
+
+  setTimeout(() => {
+    stream.write("Goodbye\n");
+    stream.shutdown();
+  }, 1000);
+}, 3000);
