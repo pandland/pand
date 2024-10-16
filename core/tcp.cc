@@ -1,5 +1,4 @@
 #include "tcp.h"
-#include "pandio/tcp.h"
 #include "v8_utils.cc"
 
 namespace pand::core {
@@ -77,7 +76,6 @@ void TcpStream::setKeepAlive(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void TcpStream::setNoDelay(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
@@ -103,7 +101,6 @@ void TcpStream::connect(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void TcpStream::shutdown(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
@@ -113,7 +110,6 @@ void TcpStream::shutdown(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void TcpStream::destroy(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
@@ -123,7 +119,6 @@ void TcpStream::destroy(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void TcpStream::pause(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
@@ -133,7 +128,6 @@ void TcpStream::pause(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void TcpStream::resume(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
