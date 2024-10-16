@@ -36,6 +36,14 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
       v8::FunctionTemplate::New(isolate, TcpStream::destroy);
   t->PrototypeTemplate()->Set(isolate, "destroy", destroyT);
 
+  v8::Local<v8::FunctionTemplate> pauseT =
+      v8::FunctionTemplate::New(isolate, TcpStream::pause);
+  t->PrototypeTemplate()->Set(isolate, "pause", pauseT);
+
+  v8::Local<v8::FunctionTemplate> resumeT =
+      v8::FunctionTemplate::New(isolate, TcpStream::resume);
+  t->PrototypeTemplate()->Set(isolate, "resume", resumeT);
+
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
       ->Set(context,
@@ -110,6 +118,26 @@ void TcpStream::destroy(const v8::FunctionCallbackInfo<v8::Value> &args) {
   TcpStream *stream = static_cast<TcpStream *>(
       args.This()->GetAlignedPointerFromInternalField(0));
   pd_tcp_close(&stream->handle);
+}
+
+void TcpStream::pause(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  TcpStream *stream = static_cast<TcpStream *>(
+      args.This()->GetAlignedPointerFromInternalField(0));
+  pd_tcp_pause(&stream->handle);
+}
+
+void TcpStream::resume(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  TcpStream *stream = static_cast<TcpStream *>(
+      args.This()->GetAlignedPointerFromInternalField(0));
+  pd_tcp_resume(&stream->handle);
 }
 
 // callback handlers:
