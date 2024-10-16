@@ -1,6 +1,7 @@
 #include "tcp_server.h"
 #include "v8_utils.cc"
 #include <cstdio>
+#include <v8-value.h>
 
 namespace pand::core {
 
@@ -46,10 +47,25 @@ void TcpServer::listen(const v8::FunctionCallbackInfo<v8::Value> &args) {
   pd_tcp_listen(&server->handle, port, TcpServer::onConnection);
 }
 
-void TcpServer::onConnection(pd_tcp_server_t *server, pd_socket_t socket,
+void TcpServer::onConnection(pd_tcp_server_t *handle, pd_socket_t socket,
                              int status) {
-  printf("Socket fd: %d\n", socket);
-  // TODO: construct TcpStream and use pd_tcp_accept
+  Pand *pand = Pand::get();
+  TcpServer *server = static_cast<TcpServer *>(handle->data);
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  auto constructor = pand->getTcpStreamConstructor();
+  v8::Local<v8::Object> streamInstance =
+      constructor->NewInstance(context).ToLocalChecked();
+  TcpStream *stream = static_cast<TcpStream *>(
+      streamInstance->GetAlignedPointerFromInternalField(0));
+  // TODO: make checks
+  pd_tcp_accept(&stream->handle, socket);
+
+  v8::Local<v8::Object> obj = server->obj.Get(isolate);
+  v8::Local<v8::Value> argv[1] = {streamInstance};
+  Pand::makeCallback(obj, isolate, "onConnection", argv, 1);
 }
 
 } // namespace pand::core

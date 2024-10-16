@@ -29,6 +29,7 @@ Pand::~Pand() {
   Errors::clearPendingRejects();
   Mod::clearMods();
   Mod::clearResolveCache();
+  tcpStreamConstructor.Reset();
   isolate->Dispose();
   v8::V8::Dispose();
   v8::V8::DisposePlatform();
@@ -76,6 +77,35 @@ void Pand::run(const std::string &entryfile, int argc, char *argv) {
   Mod::execScript(isolate, entryfile);
 
   pd_io_run(ctx);
+}
+
+void Pand::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
+                        const char *funcName, v8::Local<v8::Value> *argv,
+                        size_t argc) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::Local<v8::Function> callback =
+      obj->Get(context, v8_symbol(isolate, funcName))
+          .ToLocalChecked()
+          .As<v8::Function>();
+
+  if (callback.IsEmpty()) {
+    return;
+  }
+
+  v8::TryCatch try_catch(isolate);
+  auto result = callback->Call(context, v8::Undefined(isolate), argc, argv);
+  if (try_catch.HasCaught()) {
+    Errors::throwCritical(try_catch.Exception());
+  }
+}
+
+void Pand::setTcpStreamConstructor(v8::Local<v8::Function> constructor) {
+  this->tcpStreamConstructor.Reset(isolate, constructor);
+}
+
+v8::Local<v8::Function> Pand::getTcpStreamConstructor() {
+  return this->tcpStreamConstructor.Get(isolate);
 }
 
 } // namespace pand::core

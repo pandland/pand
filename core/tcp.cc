@@ -1,5 +1,4 @@
 #include "tcp.h"
-#include "errors.h"
 #include "v8_utils.cc"
 
 namespace pand::core {
@@ -49,6 +48,7 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
   t->PrototypeTemplate()->Set(isolate, "write", writeT);
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
+  pand->setTcpStreamConstructor(func);
   exports->Set(context, v8_symbol(isolate, "TcpStream"), func).ToChecked();
 }
 
@@ -169,27 +169,6 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   pd_tcp_write(&stream->handle, op);
 }
 
-void TcpStream::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
-                             const char *funcName, v8::Local<v8::Value> *argv,
-                             size_t argc) {
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  v8::Local<v8::Function> callback =
-      obj->Get(context, v8_symbol(isolate, funcName))
-          .ToLocalChecked()
-          .As<v8::Function>();
-
-  if (callback.IsEmpty()) {
-    return;
-  }
-
-  v8::TryCatch try_catch(isolate);
-  auto result = callback->Call(context, v8::Undefined(isolate), argc, argv);
-  if (try_catch.HasCaught()) {
-    Errors::throwCritical(try_catch.Exception());
-  }
-}
-
 // callback handlers:
 void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
@@ -214,7 +193,7 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
           .ToLocalChecked();
   v8::Local<v8::Value> argv = {data};
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
-  TcpStream::makeCallback(obj, isolate, "onData", &argv, 1);
+  Pand::makeCallback(obj, isolate, "onData", &argv, 1);
 
   // TODO: make ability to create own allocator in pandiolib
   free(buffer); // our pandio uses C allocators
@@ -232,7 +211,7 @@ void TcpStream::onClose(pd_tcp_t *handle) {
   v8::HandleScope handle_scope(isolate);
 
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
-  TcpStream::makeCallback(obj, isolate, "onClose", {}, 0);
+  Pand::makeCallback(obj, isolate, "onClose", {}, 0);
   obj->SetAlignedPointerInInternalField(0, nullptr);
 
   delete stream;

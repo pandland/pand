@@ -15,6 +15,8 @@ public:
     this->obj.Reset(obj->GetIsolate(), obj);
   }
 
+  ~TcpServer() { this->obj.Reset(); }
+
   pd_tcp_server_t handle;
   v8::Persistent<v8::Object> obj;
 
