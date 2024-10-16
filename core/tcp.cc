@@ -1,4 +1,5 @@
 #include "tcp.h"
+#include "pandio/tcp.h"
 #include "v8_utils.cc"
 
 namespace pand::core {
@@ -27,9 +28,18 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
       v8::FunctionTemplate::New(isolate, TcpStream::connect);
   t->PrototypeTemplate()->Set(isolate, "connect", connectT);
 
+  v8::Local<v8::FunctionTemplate> shutdownT =
+      v8::FunctionTemplate::New(isolate, TcpStream::shutdown);
+  t->PrototypeTemplate()->Set(isolate, "shutdown", shutdownT);
+
+  v8::Local<v8::FunctionTemplate> destroyT =
+      v8::FunctionTemplate::New(isolate, TcpStream::destroy);
+  t->PrototypeTemplate()->Set(isolate, "destroy", destroyT);
+
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
-      ->Set(context, v8::String::NewFromUtf8(isolate, "TcpStream").ToLocalChecked(),
+      ->Set(context,
+            v8::String::NewFromUtf8(isolate, "TcpStream").ToLocalChecked(),
             func)
       .ToChecked();
 }
@@ -82,6 +92,26 @@ void TcpStream::connect(const v8::FunctionCallbackInfo<v8::Value> &args) {
   pd_tcp_connect(&stream->handle, *hostname, port, TcpStream::onConnect);
 }
 
+void TcpStream::shutdown(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  TcpStream *stream = static_cast<TcpStream *>(
+      args.This()->GetAlignedPointerFromInternalField(0));
+  pd_tcp_shutdown(&stream->handle);
+}
+
+void TcpStream::destroy(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  TcpStream *stream = static_cast<TcpStream *>(
+      args.This()->GetAlignedPointerFromInternalField(0));
+  pd_tcp_close(&stream->handle);
+}
+
 // callback handlers:
 void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
@@ -89,11 +119,10 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
     printf("Error code: %d.\n", status);
     printf("Name: %s\n", pd_errname(status));
     printf("Message: %s\n", pd_errstr(status));
+    pd_tcp_close(handle);
   } else {
     printf("Connected.\n");
   }
-
-  pd_tcp_close(handle);
 }
 
 void TcpStream::onData(pd_tcp_t *handle, char *buf, size_t size) {

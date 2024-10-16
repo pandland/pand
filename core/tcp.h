@@ -31,6 +31,10 @@ public:
 
   static void connect(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void shutdown(const v8::FunctionCallbackInfo<v8::Value> &);
+
+  static void destroy(const v8::FunctionCallbackInfo<v8::Value> &);
+
   static void onConnect(pd_tcp_t *, int);
 
   static void onData(pd_tcp_t *, char *, size_t);
