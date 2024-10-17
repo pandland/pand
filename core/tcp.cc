@@ -171,15 +171,20 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
 // callback handlers:
 void TcpStream::onConnect(pd_tcp_t *handle, int status) {
+  Pand *pand = Pand::get();
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+
+  // TODO: handle error scenario
   if (status < 0) {
     printf("Error code: %d.\n", status);
     printf("Name: %s\n", pd_errname(status));
     printf("Message: %s\n", pd_errstr(status));
-    pd_tcp_close(handle);
-  } else {
-    printf("Connected.\n");
   }
+
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+  Pand::makeCallback(obj, isolate, "onConnect", {}, 0);
 }
 
 void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {

@@ -1,4 +1,21 @@
-const { TcpStream, TcpServer } = Runtime.bind("tcp");
+const { TcpServer, TcpStream } = Runtime.bind("tcp");
+
+
+const client = new TcpStream();
+client.onConnect = () => {
+  client.write("Hello, server\n");
+
+  client.onData = (data) => {
+    console.log(`From server: ${data}`);
+    client.shutdown();
+  }
+
+  client.onClose = () => {
+    console.log("connection closed :o");
+  }
+}
+
+client.connect("127.0.0.1", 8000);
 
 const server = new TcpServer();
 server.onConnection = (stream) => {
