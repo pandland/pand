@@ -26,6 +26,8 @@ public:
 
   static void listen(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void close(const v8::FunctionCallbackInfo<v8::Value> &);
+
   static void onConnection(pd_tcp_server_t *server, pd_socket_t socket,
                            int status);
 };

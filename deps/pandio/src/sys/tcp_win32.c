@@ -49,6 +49,12 @@ void pd_tcp_server_init(pd_io_t *ctx, pd_tcp_server_t *server) {
 }
 
 
+int pd_tcp_server_close(pd_tcp_server_t *server) {
+    // not supported yet on Windows
+    return PD_UNKNOWN;
+}
+
+
 /* Handling callback from IOCP */
 void pd__tcp_accept_io(pd_event_t *event) {
     pd__accept_op_t *op = event->data;

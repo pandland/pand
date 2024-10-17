@@ -1,25 +1,5 @@
 const { TcpServer, TcpStream } = Runtime.bind("tcp");
 
-setTimeout((arg1) => {
-  console.log(`Timeout with arg: ${arg1}`);
-}, 2000, 2137);
-
-const client = new TcpStream();
-client.onConnect = () => {
-  client.write("Hello, server\n");
-
-  client.onData = (data) => {
-    console.log(`From server: ${data}`);
-    client.shutdown();
-  }
-
-  client.onClose = () => {
-    console.log("connection closed :o");
-  }
-}
-
-client.connect("127.0.0.1", 8000);
-
 const server = new TcpServer();
 server.onConnection = (stream) => {
   console.log("New connection.\n");
@@ -33,3 +13,8 @@ server.onConnection = (stream) => {
 }
 
 server.listen(5000);
+
+setTimeout((arg1) => {
+  console.log(`Timeout with arg: ${arg1}`);
+  server.close();
+}, 5000, 2137);
