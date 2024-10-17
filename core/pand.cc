@@ -7,7 +7,6 @@
 #include "errors.h"
 #include "mod.h"
 #include "runtime.h"
-#include "v8_utils.cc"
 
 namespace pand::core {
 
@@ -64,7 +63,7 @@ void Pand::run(const std::string &entryfile, int argc, char *argv) {
   v8::Local<v8::ObjectTemplate> runtime_template =
       v8::ObjectTemplate::New(isolate);
   Runtime::initialize(runtime_template, isolate);
-  global->Set(v8_symbol(isolate, "Runtime"), runtime_template);
+  global->Set(Pand::symbol(isolate, "Runtime"), runtime_template);
 
   v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
   v8::Context::Scope context_scope(context);
@@ -85,7 +84,7 @@ void Pand::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   v8::Local<v8::Function> callback =
-      obj->Get(context, v8_symbol(isolate, funcName))
+      obj->Get(context, Pand::symbol(isolate, funcName))
           .ToLocalChecked()
           .As<v8::Function>();
 

@@ -1,5 +1,4 @@
 #include "tcp.h"
-#include "v8_utils.cc"
 
 namespace pand::core {
 
@@ -11,7 +10,7 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> t =
       v8::FunctionTemplate::New(isolate, TcpStream::constructor);
 
-  t->SetClassName(v8_symbol(isolate, "TcpStream"));
+  t->SetClassName(Pand::symbol(isolate, "TcpStream"));
   t->InstanceTemplate()->SetInternalFieldCount(1);
 
   // set proto functions:
@@ -49,7 +48,7 @@ void TcpStream::initialize(v8::Local<v8::Object> exports) {
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   pand->setTcpStreamConstructor(func);
-  exports->Set(context, v8_symbol(isolate, "TcpStream"), func).ToChecked();
+  exports->Set(context, Pand::symbol(isolate, "TcpStream"), func).ToChecked();
 }
 
 void TcpStream::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {

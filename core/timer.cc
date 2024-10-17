@@ -1,6 +1,5 @@
 #include "timer.h"
 #include "errors.h"
-#include "v8_utils.cc"
 
 namespace pand::core {
 
@@ -15,7 +14,7 @@ void Timer::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> t =
       v8::FunctionTemplate::New(isolate, Timer::constructor);
 
-  t->SetClassName(v8_symbol(isolate, "Timer"));
+  t->SetClassName(Pand::symbol(isolate, "Timer"));
   t->InstanceTemplate()->SetInternalFieldCount(1);
 
   v8::Local<v8::FunctionTemplate> setTimeoutT =
@@ -91,20 +90,8 @@ void Timer::makeCallback(Timer *timer) {
   Pand *pand = Pand::get();
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  v8::Local<v8::Object> obj = timer->obj.Get(pand->isolate);
-  v8::Local<v8::Function> callback =
-      obj->Get(context, v8_symbol(isolate, "onTimeout"))
-          .ToLocalChecked()
-          .As<v8::Function>();
-
-  v8::TryCatch try_catch(isolate);
-  v8::Local<v8::Value> args[0] = {};
-  auto result = callback->Call(context, v8::Undefined(isolate), 0, args);
-  if(try_catch.HasCaught()) {
-    Errors::throwCritical(try_catch.Exception());
-  }
+  v8::Local<v8::Object> obj = timer->obj.Get(isolate);
+  Pand::makeCallback(obj, isolate, "onTimeout", {}, 0);
 }
 
 void Timer::onTimeout(pd_timer_t *handle) {

@@ -1,6 +1,5 @@
 #include "mod.h"
 #include "pand.h"
-#include "v8_utils.cc"
 #include <ada.h>
 #include <cstdio>
 #include <filesystem>
@@ -16,7 +15,7 @@ namespace pand::core {
 std::unordered_map<int, Mod *> mods;
 std::unordered_map<std::string, v8::Global<v8::Module>> resolve_cache;
 
-Mod * Mod::find(int id) {
+Mod *Mod::find(int id) {
   auto it = mods.find(id);
   if (it == mods.end()) {
     return nullptr;
@@ -150,8 +149,8 @@ v8::MaybeLocal<v8::Module> Mod::initialize(v8::Isolate *isolate) {
     return v8::MaybeLocal<v8::Module>();
   }
 
-  v8::Local<v8::String> source = v8_value(isolate, content);
-  v8::ScriptOrigin origin(v8_value(isolate, url), 0, 0, true, -1,
+  v8::Local<v8::String> source = Pand::value(isolate, content);
+  v8::ScriptOrigin origin(Pand::value(isolate, url), 0, 0, true, -1,
                           v8::Local<v8::Value>(), false, false, true);
 
   v8::ScriptCompiler::Source script_source(source, origin);
@@ -231,15 +230,16 @@ void Mod::setMeta(v8::Local<v8::Context> context, v8::Local<v8::Module> module,
   if (mod && !mod->isInternal()) {
     v8::Isolate *isolate = context->GetIsolate();
 
-    meta->Set(context, v8_symbol(isolate, "url"), v8_value(isolate, mod->url))
+    meta->Set(context, Pand::symbol(isolate, "url"),
+              Pand::value(isolate, mod->url))
         .Check();
-    meta->Set(context, v8_symbol(isolate, "filename"),
-              v8_value(isolate, mod->fullpath))
+    meta->Set(context, Pand::symbol(isolate, "filename"),
+              Pand::value(isolate, mod->fullpath))
         .Check();
-    meta->Set(context, v8_symbol(isolate, "dirname"),
-              v8_value(isolate, mod->dirname))
+    meta->Set(context, Pand::symbol(isolate, "dirname"),
+              Pand::value(isolate, mod->dirname))
         .Check();
-    meta->Set(context, v8_symbol(isolate, "resolve"),
+    meta->Set(context, Pand::symbol(isolate, "resolve"),
               v8::Function::New(context, Mod::resolve).ToLocalChecked())
         .Check();
   }
@@ -251,17 +251,17 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   v8::Local<v8::Object> meta = args.Holder();
   v8::MaybeLocal<v8::Value> parent =
-      meta->Get(isolate->GetCurrentContext(), v8_symbol(isolate, "filename"));
+      meta->Get(isolate->GetCurrentContext(), Pand::symbol(isolate, "filename"));
   if (parent.IsEmpty()) {
     isolate->ThrowException(v8::Exception::ReferenceError(
-        v8_symbol(isolate, "Unable to get import.meta.dirname")));
+        Pand::symbol(isolate, "Unable to get import.meta.dirname")));
     return;
   }
 
   v8::Local<v8::Value> path_to_resolve = args[0];
   if (!path_to_resolve->IsString()) {
     isolate->ThrowException(v8::Exception::TypeError(
-        v8_symbol(isolate, "Unable to get import.meta.dirname")));
+        Pand::symbol(isolate, "Unable to get import.meta.dirname")));
     return;
   }
 
@@ -271,14 +271,14 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
   std::string_view pathstr = *path;
   if (!pathstr.starts_with("/") && !pathstr.starts_with("./") &&
       !pathstr.starts_with("../")) {
-    isolate->ThrowException(v8::Exception::TypeError(v8_symbol(
+    isolate->ThrowException(v8::Exception::TypeError(Pand::symbol(
         isolate, "Resolve path must be prefixed with / or ./ or ../")));
     return;
   }
 
   std::string abs_path = Mod::resolveModulePath(fs::path(*parent_path), *path);
   std::string url = Mod::pathToUrl(abs_path);
-  args.GetReturnValue().Set(v8_value(isolate, url));
+  args.GetReturnValue().Set(Pand::value(isolate, url));
 }
 
 void Mod::clearResolveCache() {

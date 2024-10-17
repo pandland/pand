@@ -1,10 +1,7 @@
 #include "errors.h"
 #include "mod.h"
 #include "pand.h"
-#include <exception>
 #include <iostream>
-#include <v8-context.h>
-#include <v8-local-handle.h>
 
 namespace pand::core {
 

@@ -1,5 +1,8 @@
 const { TcpServer, TcpStream } = Runtime.bind("tcp");
 
+setTimeout((arg1) => {
+  console.log(`Timeout with arg: ${arg1}`);
+}, 2000, 2137);
 
 const client = new TcpStream();
 client.onConnect = () => {

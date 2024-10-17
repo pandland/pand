@@ -2,7 +2,6 @@
 #include "tcp.h"
 #include "tcp_server.h"
 #include "timer.h"
-#include "v8_utils.cc"
 #include <filesystem>
 #include <iostream>
 #include <pandio.h>
@@ -24,9 +23,9 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
   runtime_template->Set(isolate, "exit",
                         v8::FunctionTemplate::New(isolate, Runtime::exit));
   runtime_template->Set(isolate, "platform",
-                        v8_symbol(isolate, pd_get_platform()));
+                        Pand::symbol(isolate, pd_get_platform()));
   runtime_template->Set(isolate, "version",
-                        v8_symbol(isolate, RUNTIME_VERSION));
+                        Pand::symbol(isolate, RUNTIME_VERSION));
   runtime_template->Set(isolate, "pid", v8::Number::New(isolate, pd_getpid()));
 }
 
@@ -39,7 +38,7 @@ void Runtime::print(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
 void Runtime::cwd(const v8::FunctionCallbackInfo<v8::Value> &args) {
   args.GetReturnValue().Set(
-      v8_value(args.GetIsolate(), std::filesystem::current_path().string()));
+      Pand::value(args.GetIsolate(), std::filesystem::current_path().string()));
 }
 
 void Runtime::exit(const v8::FunctionCallbackInfo<v8::Value> &args) {

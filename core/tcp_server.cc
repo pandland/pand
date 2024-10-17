@@ -1,5 +1,4 @@
 #include "tcp_server.h"
-#include "v8_utils.cc"
 #include <cstdio>
 #include <v8-value.h>
 
@@ -13,7 +12,7 @@ void TcpServer::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> t =
       v8::FunctionTemplate::New(isolate, TcpServer::constructor);
 
-  t->SetClassName(v8_symbol(isolate, "TcpServer"));
+  t->SetClassName(Pand::symbol(isolate, "TcpServer"));
   t->InstanceTemplate()->SetInternalFieldCount(1);
 
   v8::Local<v8::FunctionTemplate> listenT =
@@ -21,7 +20,7 @@ void TcpServer::initialize(v8::Local<v8::Object> exports) {
   t->PrototypeTemplate()->Set(isolate, "listen", listenT);
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
-  exports->Set(context, v8_symbol(isolate, "TcpServer"), func).ToChecked();
+  exports->Set(context, Pand::symbol(isolate, "TcpServer"), func).ToChecked();
 }
 
 void TcpServer::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
