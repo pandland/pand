@@ -15,6 +15,7 @@ static Pand *instance = nullptr;
 Pand::Pand() {
   ctx = new pd_io_t;
   pd_io_init(ctx);
+  pd_set_after_tick(ctx, Errors::checkPendingErrors);
 
   platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(platform.get());
@@ -42,13 +43,11 @@ Pand *Pand::get() {
   return instance;
 }
 
-void Pand::exit(int status) {
+void Pand::destroy() {
   if (instance) {
     delete instance;
     instance = nullptr;
   }
-
-  std::exit(status);
 }
 
 void Pand::run(const std::string &entryfile) {

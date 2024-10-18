@@ -1,11 +1,12 @@
 #pragma once
 #include <v8.h>
+#include <pandio.h>
 
 namespace pand::core {
 
 class Errors {
 public:
-  static void checkPendingErrors(void *);
+  static void checkPendingErrors(pd_io_t *ctx);
 
   static void promiseRejectedCallback(v8::PromiseRejectMessage);
 

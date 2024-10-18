@@ -2,11 +2,17 @@ const { TcpServer, TcpStream } = Runtime.bind("tcp");
 
 const client = new TcpStream();
 
+async function willThrow() {
+  throw new Error("async error");
+}
+
+willThrow().catch((err) => {
+  console.log(`Catch: ${err.message}`);
+})
+
 client.onError = (err) => {
   console.log(err.code);
   console.log(err.message);
-  // issue: without destroy() we will get onConnect, because of bug in pandio
-  client.destroy();
 }
 
 client.onConnect = () => {

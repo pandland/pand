@@ -1,4 +1,5 @@
 #include "pand.h"
+#include <exception>
 
 using namespace pand::core;
 
@@ -6,9 +7,12 @@ int main() {
   Pand *pand = Pand::get();
   try {
     pand->run("../sample.js");
-    pand->exit(0);
   } catch (...) {
-    pand->exit(1);
+    pand->destroy();
+    return 1;
   }
+
+  pand->destroy();
+
   return 0;
 }

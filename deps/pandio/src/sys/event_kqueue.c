@@ -43,6 +43,7 @@ uint64_t pd_now() {
 
 void pd_io_init(pd_io_t *ctx) {
     ctx->refs = 0;
+    ctx->after_tick = NULL;
     ctx->poll_fd = kqueue();
     if (ctx->poll_fd < 0)
         abort();
@@ -153,5 +154,8 @@ void pd_io_run(pd_io_t *ctx) {
         pd_timers_run(ctx);
         timeout = pd_timers_next(ctx);
         pd__tcp_pending_close(ctx);
+
+        if (ctx->after_tick)
+            ctx->after_tick(ctx);
     }
 }

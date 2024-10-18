@@ -48,6 +48,7 @@ void pd_io_init(pd_io_t *ctx) {
     ctx->poll_fd = CreateIoCompletionPort(
             INVALID_HANDLE_VALUE,NULL,
             0, 1);
+    ctx->after_tick = NULL;
 
     ctx->now = pd_now();
     queue_init(&ctx->pending_closes);
@@ -110,5 +111,8 @@ void pd_io_run(pd_io_t *ctx) {
         pd_timers_run(ctx);
         timeout = pd_timers_next(ctx);
         pd__tcp_pending_close(ctx);
+
+        if (ctx->after_tick)
+            ctx->after_tick(ctx);
     }
 }

@@ -36,9 +36,9 @@ uint64_t pd_now() {
 
 
 void pd_io_init(pd_io_t *ctx) {
-    ctx->poll_fd = epoll_create1(0);
     ctx->refs = 0;
-
+    ctx->after_tick = NULL;
+    ctx->poll_fd = epoll_create1(0);
     if (ctx->poll_fd == -1) {
         abort();
     }
@@ -158,5 +158,8 @@ void pd_io_run(pd_io_t *ctx) {
         pd_timers_run(ctx);
         timeout = pd_timers_next(ctx);
         pd__tcp_pending_close(ctx);
+
+        if (ctx->after_tick)
+            ctx->after_tick(ctx);
     }
 }

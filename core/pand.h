@@ -21,7 +21,7 @@ public:
   pd_io_t *ctx;
   v8::Isolate *isolate;
   static Pand *get();
-  void exit(int status);
+  void destroy();
   void run(const std::string &);
   void run(const std::string &, int argc, char *argv);
 

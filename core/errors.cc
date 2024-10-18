@@ -7,7 +7,6 @@
 namespace pand::core {
 
 static std::unordered_map<int, v8::Global<v8::Value>> rejected_promises;
-static bool checked = false;
 
 void Errors::clearPendingRejects() {
   for (auto &entry : rejected_promises) {
@@ -16,9 +15,7 @@ void Errors::clearPendingRejects() {
   rejected_promises.clear();
 }
 
-void Errors::checkPendingErrors(void *data) {
-  checked = false;
-
+void Errors::checkPendingErrors(pd_io_t *ctx) {
   if (rejected_promises.empty()) {
     return;
   }
@@ -56,11 +53,6 @@ void Errors::promiseRejectedCallback(v8::PromiseRejectMessage message) {
     break;
   default:
     return;
-  }
-  // TODO: use pandio's event loop for checks
-  if (!checked) {
-    isolate->EnqueueMicrotask(Errors::checkPendingErrors);
-    checked = true;
   }
 }
 

@@ -1,8 +1,5 @@
 #include "tcp.h"
 #include "pandio/tcp.h"
-#include <cstdio>
-#include <v8-exception.h>
-#include <v8-local-handle.h>
 
 namespace pand::core {
 

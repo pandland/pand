@@ -328,12 +328,9 @@ void pd__tcp_connect_io(pd_event_t *event, unsigned events) {
         int err = 0;
         socklen_t errsize = sizeof(err);
         getsockopt(stream->fd, SOL_SOCKET, SO_ERROR, &err,  &errsize);
-        err = pd_errmap(err);
-        
-        if (stream->on_connect)
-            stream->on_connect(stream, err);
 
-        pd__event_del(stream->ctx, stream->fd);
+        if (stream->on_connect)
+            stream->on_connect(stream, pd_errmap(err));
         return;
     }
 

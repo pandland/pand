@@ -67,6 +67,7 @@ struct pd_io_s {
     struct queue pending_closes;
     struct queue finished_tasks;
     struct pd_notifier_s *task_signal;
+    void (*after_tick)(struct pd_io_s*);
     bool task_signaled;
 };
 
@@ -96,6 +97,10 @@ struct pd_event_s {
 
 typedef struct pd_event_s pd_event_t;
 
+/* Sets hook, it will be called at the end of the iteration, right before another */
+static void pd_set_after_tick(pd_io_t *ctx, void (*after_tick)(pd_io_t*)) {
+    ctx->after_tick = after_tick;
+}
 
 void pd_io_init(pd_io_t*);
 

@@ -38,11 +38,16 @@ void handle_connect(pd_tcp_t *stream, int status) {
     pd_tcp_write(stream, write_op);
 }
 
+void after_tick_hook(pd_io_t *ctx) {
+    printf("After tick hook callback...\n");
+}
+
 int main() {
     printf("Platform: %s\n", pd_get_platform());
     printf("PID: %ld\n", pd_getpid());
     pd_io_t *ctx = malloc(sizeof(pd_io_t));
     pd_io_init(ctx);
+    pd_set_after_tick(ctx, after_tick_hook);
 
     pd_tcp_t *stream = malloc(sizeof(pd_tcp_t));
     pd_tcp_init(ctx, stream);

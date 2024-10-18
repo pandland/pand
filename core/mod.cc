@@ -1,4 +1,5 @@
 #include "mod.h"
+#include "errors.h"
 #include "pand.h"
 #include <ada.h>
 #include <cstdio>
@@ -213,13 +214,7 @@ void Mod::evaluate(v8::Isolate *isolate, Mod *mod) {
   if (value->IsPromise()) {
     v8::Local<v8::Promise> promise = value.As<v8::Promise>();
     if (promise->State() == v8::Promise::kRejected) {
-      v8::String::Utf8Value error(isolate, promise->Result());
-      v8::Local<v8::Message> errmsg =
-          v8::Exception::CreateMessage(isolate, promise->Result());
-      printf("error: Uncaught (in promise) %s\n", *error);
-      v8::String::Utf8Value errfile(isolate, errmsg->GetScriptResourceName());
-      printf("filename: %s\n", *errfile);
-      // Loader::report_details(errmsg, context);
+      Errors::throwCritical(promise->Result());
     }
   }
 }
