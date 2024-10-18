@@ -6,6 +6,10 @@ async function willThrow() {
   throw new Error("async error");
 }
 
+Runtime.argv.forEach(arg => {
+  console.log(arg);
+});
+
 willThrow().catch((err) => {
   console.log(`Catch: ${err.message}`);
 })

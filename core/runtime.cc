@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <iostream>
 #include <pandio.h>
+#include <v8-context.h>
+#include <v8-isolate.h>
+#include <v8-local-handle.h>
 
 #define RUNTIME_VERSION "v0.0.0"
 
@@ -26,7 +29,23 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
                         Pand::symbol(isolate, pd_get_platform()));
   runtime_template->Set(isolate, "version",
                         Pand::symbol(isolate, RUNTIME_VERSION));
-  runtime_template->Set(isolate, "pid", v8::Number::New(isolate, pd_getpid()));
+  runtime_template->Set(isolate, "pid", Pand::value(isolate, pd_getpid()));
+}
+
+void Runtime::setArgv(v8::Local<v8::Context> context, int argc, char **argv) {
+  v8::Isolate *isolate = context->GetIsolate();
+  v8::Local<v8::Object> runtime =
+      context->Global()
+          ->Get(context, Pand::symbol(isolate, "Runtime"))
+          .ToLocalChecked()
+          .As<v8::Object>();
+  v8::Local<v8::Array> arr = v8::Array::New(isolate, argc);
+  for (int i = 0; i < argc; ++i) {
+    v8::Local<v8::String> arg = Pand::value(isolate, argv[i]);
+    arr->Set(context, i, arg).FromJust();
+  }
+
+  runtime->Set(context, Pand::symbol(isolate, "argv"), arr).Check();
 }
 
 void Runtime::print(const v8::FunctionCallbackInfo<v8::Value> &args) {

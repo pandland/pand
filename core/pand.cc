@@ -54,7 +54,7 @@ void Pand::run(const std::string &entryfile) {
   Pand::run(entryfile, 0, nullptr);
 }
 
-void Pand::run(const std::string &entryfile, int argc, const char **argv) {
+void Pand::run(const std::string &entryfile, int argc, char **argv) {
   v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
@@ -63,9 +63,9 @@ void Pand::run(const std::string &entryfile, int argc, const char **argv) {
       v8::ObjectTemplate::New(isolate);
   Runtime::initialize(runtime_template, isolate);
   global->Set(Pand::symbol(isolate, "Runtime"), runtime_template);
-
   v8::Local<v8::Context> context = v8::Context::New(isolate, NULL, global);
   v8::Context::Scope context_scope(context);
+  Runtime::setArgv(context, argc, argv);
 
   isolate->SetCaptureStackTraceForUncaughtExceptions(true, 10);
   isolate->SetPromiseRejectCallback(Errors::promiseRejectedCallback);
