@@ -16,7 +16,7 @@
 
 > ⚠️ Early stage of development.
 
-My own JavaScript runtime - currently, just randomly messing around with v8 engine in C++. Very unstable as I learn how things work together.
+Simple, free and open-source JavaScript runtime environment. Everything under single executable called `pand`.
 
 ### Clone
 
@@ -45,57 +45,6 @@ cmake --build .
 ```
 
 > `v8.cmake` script is not tested yet on fresh Linux installation.
-
-### Code sample
-
-##### Currently working on providing helpful messages for working with code, like this:
-
-![image](https://github.com/user-attachments/assets/14d06de3-8605-4f2c-b063-a0259cdb674d)
-
-
-> Current state example:
-
-```js
-import { 
-  assert, 
-  assertThrows,
-  assertStrictEqual  
-} from 'std:assert';
-import { tcpListen } from 'std:net';
-
-function willThrow() {
-  throw new Error("Some error");
-}
-
-Runtime.argv.forEach(item => {
-  console.log(`Arg: ${item}`);
-});
-
-assert(2 + 2 == 4);
-assertThrows(willThrow);
-assertStrictEqual(2, 2);
-
-console.log(`Platform is ${Runtime.platform} and pid is: ${Runtime.pid}`);
-console.log(`Cwd is: ${Runtime.cwd()} and runtime version is: ${Runtime.version}`);
-console.log(`Dirname: ${import.meta.dirname}`)
-console.log(`Filename: ${import.meta.filename}`);
-console.log(`Url: ${import.meta.url}`);
-
-tcpListen((socket) => {
-  console.log("Client connected");
-
-  setTimeout(() => {
-    socket.close();
-  }, 5 * 1000);
-
-  socket.read((chunk) => {
-    console.log(`Received data`);
-    const response = `<h1>${chunk}</h1>`; // echo HTTP request
-    socket.write(`HTTP/1.1 200 OK\r\nContent-Length: ${response.length}\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n`);
-    socket.write(response);
-  });
-}, 8000);
-```
 
 ## License
 
