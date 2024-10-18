@@ -48,6 +48,7 @@ void pd_io_init(pd_io_t *ctx) {
         abort();
 
     ctx->now = pd_now();
+    queue_init(&ctx->pending_closes);
     pd_timers_heap_init(ctx);
 
     ctx->task_signal = malloc(sizeof(pd_notifier_t));

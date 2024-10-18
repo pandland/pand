@@ -60,23 +60,16 @@ void interval_task(pd_timer_t *timer) {
     printf("Timer callback\n");
 }
 
+void close_server(pd_timer_t *timer) {
+    printf("Closing server...\n");
+    pd_tcp_server_t *server = timer->data;
+    pd_tcp_server_close(server);
+    free(server);
+}
 
 int main() {
     pd_io_t *ctx = malloc(sizeof(pd_io_t));
     pd_io_init(ctx);
-
-    pd_threadpool_init(4);
-
-    pd_timer_t timer;
-    pd_timer_init(ctx, &timer);
-    pd_timer_repeat(&timer, interval_task, 4000);
-
-    for (int i = 0; i < 11; ++i) {
-        pd_task_t *task = malloc(sizeof(pd_task_t));
-        task->work = expensive_task;
-        task->done = task_done;
-        pd_task_submit(ctx, task);
-    }
 
     pd_tcp_server_t *server = malloc(sizeof(pd_tcp_server_t));
     pd_tcp_server_init(ctx, server);
@@ -86,6 +79,11 @@ int main() {
     if (status < 0) {
         printf("Listener failed.\n");
     }
+
+    pd_timer_t timer;
+    pd_timer_init(ctx, &timer);
+    timer.data = server;
+    pd_timer_start(&timer, close_server, 10 * 1000);
 
     pd_io_run(ctx);
 }

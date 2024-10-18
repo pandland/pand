@@ -133,6 +133,8 @@ int pd_tcp_listen(pd_tcp_server_t*, int, pd_on_connection_cb);
 
 void pd_tcp_server_init(pd_io_t*, pd_tcp_server_t*);
 
+int pd_tcp_server_close(pd_tcp_server_t*);
+
 void pd_tcp_init(pd_io_t*, pd_tcp_t*);
 
 /* Creates pd_tcp_t from OS socket handle */
