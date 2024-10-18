@@ -1,6 +1,4 @@
 #include "tcp_server.h"
-#include <cstdio>
-#include <v8-value.h>
 
 namespace pand::core {
 
@@ -61,7 +59,6 @@ void TcpServer::close(const v8::FunctionCallbackInfo<v8::Value> &args) {
     return;
 
   int status = pd_tcp_server_close(&server->handle);
-  printf("status: %d\n", status);
   server->obj.Get(isolate)->SetAlignedPointerInInternalField(0, nullptr);
   delete server;
 }

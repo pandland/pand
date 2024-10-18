@@ -1,20 +1,24 @@
 const { TcpServer, TcpStream } = Runtime.bind("tcp");
 
-const server = new TcpServer();
-server.onConnection = (stream) => {
-  console.log("New connection.\n");
-  stream.onData = (data) => {
-    stream.write(data);
-    stream.shutdown();
-  };
-  stream.onClose = () => {
-    console.log("Connection closed")
-  };
+const client = new TcpStream();
+
+client.onError = (err) => {
+  console.log(err.code);
+  console.log(err.message);
+  // issue: without destroy() we will get onConnect, because of bug in pandio
+  client.destroy();
 }
 
-server.listen(5000);
+client.onConnect = () => {
+  console.log("Connected");
+}
 
-setTimeout((arg1) => {
-  console.log(`Timeout with arg: ${arg1}`);
-  server.close();
-}, 5000, 2137);
+client.onData = (data) => {
+  console.log(data);
+}
+
+client.onClose = () => {
+  console.log("Close")
+}
+
+client.connect("127.0.0.1", 4000);

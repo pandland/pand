@@ -1,5 +1,5 @@
 #include "pand.h"
-#include <exception>
+#include <cstdio>
 #include <iostream>
 #include <pandio.h>
 #include <v8.h>
@@ -56,7 +56,7 @@ void Pand::run(const std::string &entryfile) {
 }
 
 void Pand::run(const std::string &entryfile, int argc, char *argv) {
-  // v8::Isolate::Scope isolate_scope(isolate);
+  v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
@@ -97,6 +97,19 @@ void Pand::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
   if (try_catch.HasCaught()) {
     Errors::throwCritical(try_catch.Exception());
   }
+}
+
+v8::Local<v8::Value> Pand::makeSystemError(v8::Isolate *isolate, int err) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::Local<v8::String> code = Pand::symbol(isolate, pd_errname(err));
+  v8::Local<v8::String> message = Pand::value(isolate, pd_errstr(err));
+
+  v8::Local<v8::Value> error = v8::Exception::Error(message);
+  v8::Local<v8::Object> obj = error.As<v8::Object>();
+
+  obj->Set(context, Pand::symbol(isolate, "code"), code).ToChecked();
+
+  return error;
 }
 
 void Pand::setTcpStreamConstructor(v8::Local<v8::Function> constructor) {

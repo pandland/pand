@@ -3,6 +3,7 @@
 #include <libplatform/libplatform.h>
 #include <pandio.h>
 #include <string>
+#include <v8-object.h>
 #include <v8.h>
 
 namespace pand::core {
@@ -27,8 +28,10 @@ public:
   static void makeCallback(v8::Local<v8::Object> &, v8::Isolate *, const char *,
                            v8::Local<v8::Value> *, size_t);
 
+  static v8::Local<v8::Value> makeSystemError(v8::Isolate *, int err);
+
   static inline v8::Local<v8::String> symbol(v8::Isolate *isolate,
-                                               const char *symbol) {
+                                             const char *symbol) {
     v8::MaybeLocal<v8::String> maybe_str = v8::String::NewFromOneByte(
         isolate, (const uint8_t *)symbol, v8::NewStringType::kNormal);
     if (maybe_str.IsEmpty()) {
@@ -39,7 +42,7 @@ public:
   }
 
   static inline v8::Local<v8::String> value(v8::Isolate *isolate,
-                                       std::string_view str) {
+                                            std::string_view str) {
     v8::MaybeLocal<v8::String> maybe_str = v8::String::NewFromUtf8(
         isolate, str.data(), v8::NewStringType::kNormal);
     if (maybe_str.IsEmpty()) {
@@ -47,6 +50,11 @@ public:
     }
 
     return maybe_str.ToLocalChecked();
+  }
+
+  static inline v8::Local<v8::Number> value(v8::Isolate *isolate,
+                                            double number) {
+    return v8::Number::New(isolate, number);
   }
 
   void setTcpStreamConstructor(v8::Local<v8::Function>);

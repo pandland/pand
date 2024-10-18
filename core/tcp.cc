@@ -1,4 +1,8 @@
 #include "tcp.h"
+#include "pandio/tcp.h"
+#include <cstdio>
+#include <v8-exception.h>
+#include <v8-local-handle.h>
 
 namespace pand::core {
 
@@ -174,15 +178,15 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
 
-  // TODO: handle error scenario
   if (status < 0) {
-    printf("Error code: %d.\n", status);
-    printf("Name: %s\n", pd_errname(status));
-    printf("Message: %s\n", pd_errstr(status));
+    v8::Local<v8::Value> error = Pand::makeSystemError(isolate, status);
+    v8::Local<v8::Value> argv[1] = {error};
+    Pand::makeCallback(obj, isolate, "onError", argv, 1);
+    return;
   }
 
-  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
   Pand::makeCallback(obj, isolate, "onConnect", {}, 0);
 }
 

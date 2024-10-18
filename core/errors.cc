@@ -2,6 +2,7 @@
 #include "mod.h"
 #include "pand.h"
 #include <iostream>
+#include <stdexcept>
 
 namespace pand::core {
 
@@ -67,7 +68,7 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
   Pand *pand = Pand::get();
   if (value.IsEmpty()) {
     std::cerr << "error: Empty thrown value\n" << std::endl;
-    return pand->exit(1);
+    throw std::runtime_error("empty thrown value");
   }
 
   v8::Isolate *isolate = pand->isolate;
@@ -81,7 +82,7 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
   // module should be found only if err object extends Error class.
   Mod *mod = Mod::find(err->GetScriptOrigin().ScriptId());
   if (!mod) {
-    return pand->exit(1);
+    throw std::runtime_error(*err_str);
   }
 
   // log error:
@@ -122,7 +123,7 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
     }
   }
 
-  pand->exit(1);
+  throw std::runtime_error(*err_str);
 }
 
 } // namespace pand::core
