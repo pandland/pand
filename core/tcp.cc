@@ -183,6 +183,7 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   if (status < 0) {
     v8::Local<v8::Value> error = Pand::makeSystemError(isolate, status);
     v8::Local<v8::Value> argv[1] = {error};
+    pd_tcp_close(handle);
     Pand::makeCallback(obj, isolate, "onError", argv, 1);
     return;
   }
