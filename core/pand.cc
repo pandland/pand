@@ -54,7 +54,7 @@ void Pand::run(const std::string &entryfile) {
   Pand::run(entryfile, 0, nullptr);
 }
 
-void Pand::run(const std::string &entryfile, int argc, char *argv) {
+void Pand::run(const std::string &entryfile, int argc, const char **argv) {
   v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);

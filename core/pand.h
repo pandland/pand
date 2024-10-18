@@ -23,7 +23,7 @@ public:
   static Pand *get();
   void destroy();
   void run(const std::string &);
-  void run(const std::string &, int argc, char *argv);
+  void run(const std::string &, int argc, const char **argv);
 
   static void makeCallback(v8::Local<v8::Object> &, v8::Isolate *, const char *,
                            v8::Local<v8::Value> *, size_t);
