@@ -59,6 +59,21 @@ void pd_tcp_server_init(pd_io_t *ctx, pd_tcp_server_t *server) {
 }
 
 
+int pd_tcp_server_close(pd_tcp_server_t *server) {
+    int status;
+    status = pd__event_del(server->ctx, server->fd);
+    if (status < 0)
+        return status;
+
+    status  = pd__closesocket(server->fd);
+    if (status < 0)
+        return status;
+
+    server->ctx->refs--;
+    return 0;
+}
+
+
 /* handler for I/O events from epoll/kqueue */
 void pnd__tcp_listener_io(pd_event_t *event, unsigned events) {
     assert(events & PD_POLLIN);
@@ -313,9 +328,12 @@ void pd__tcp_connect_io(pd_event_t *event, unsigned events) {
         int err = 0;
         socklen_t errsize = sizeof(err);
         getsockopt(stream->fd, SOL_SOCKET, SO_ERROR, &err,  &errsize);
-
+        err = pd_errmap(err);
+        
         if (stream->on_connect)
-            stream->on_connect(stream, pd_errmap(err));
+            stream->on_connect(stream, err);
+
+        pd__event_del(stream->ctx, stream->fd);
         return;
     }
 

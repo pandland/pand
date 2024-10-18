@@ -21,7 +21,7 @@
 
 
 
-// It some old version of path module from Node.js ported to the PandJS
+// It's some old version of path module from Node.js ported to the PandJS
 const isWindows = Runtime.platform === 'win32';
 
 function isObject(arg) {

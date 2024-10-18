@@ -15,9 +15,21 @@ endif()
 add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 
 add_executable(pand 
+    core/pand.h
+    core/pand.cc
+    core/mod.h
+    core/mod.cc
+    core/runtime.h
+    core/runtime.cc
+    core/errors.h
+    core/errors.cc
+    core/timer.h
+    core/timer.cc
+    core/tcp.h
+    core/tcp.cc
+    core/tcp_server.h
+    core/tcp_server.cc
     core/main.cc
-    core/loader.cc
-    core/loader.h    
 )
 
 target_include_directories(pand SYSTEM
