@@ -19,6 +19,7 @@ public:
   std::string url;
   std::string dirname;
   std::string content;
+  bool isMain = false;
   ModType type;
   ScriptType scriptType;
 

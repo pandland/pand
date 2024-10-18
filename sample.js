@@ -1,3 +1,5 @@
+import './meta.js';
+
 const { TcpServer, TcpStream } = Runtime.bind("tcp");
 
 const client = new TcpStream();
@@ -6,6 +8,9 @@ async function willThrow() {
   throw new Error("async error");
 }
 
+console.log(import.meta.resolve("./test.js"));
+
+console.log(Runtime.pid);
 Runtime.argv.forEach(arg => {
   console.log(arg);
 });

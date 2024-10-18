@@ -178,6 +178,7 @@ void Mod::execScript(v8::Isolate *isolate, std::string_view filepath) {
   std::string fullpath =
       path.is_absolute() ? path.string() : Mod::canonicalPath(filepath);
   Mod *mod = new Mod(fullpath, ModType::kScript);
+  mod->isMain = true;
   return Mod::evaluate(isolate, mod);
 }
 
@@ -235,7 +236,10 @@ void Mod::setMeta(v8::Local<v8::Context> context, v8::Local<v8::Module> module,
               Pand::value(isolate, mod->dirname))
         .Check();
     meta->Set(context, Pand::symbol(isolate, "resolve"),
-              v8::Function::New(context, Mod::resolve).ToLocalChecked())
+              Pand::func(context, Mod::resolve))
+        .Check();
+    meta->Set(context, Pand::symbol(isolate, "main"),
+              Pand::boolean(isolate, mod->isMain))
         .Check();
   }
 }
@@ -245,8 +249,8 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::HandleScope handle_scope(isolate);
 
   v8::Local<v8::Object> meta = args.Holder();
-  v8::MaybeLocal<v8::Value> parent =
-      meta->Get(isolate->GetCurrentContext(), Pand::symbol(isolate, "filename"));
+  v8::MaybeLocal<v8::Value> parent = meta->Get(
+      isolate->GetCurrentContext(), Pand::symbol(isolate, "filename"));
   if (parent.IsEmpty()) {
     isolate->ThrowException(v8::Exception::ReferenceError(
         Pand::symbol(isolate, "Unable to get import.meta.dirname")));

@@ -57,6 +57,15 @@ public:
     return v8::Number::New(isolate, number);
   }
 
+    static inline v8::Local<v8::Boolean> boolean(v8::Isolate *isolate,
+                                            bool boolean) {
+    return v8::Boolean::New(isolate, boolean);
+  }
+
+  static inline v8::Local<v8::Function> func(v8::Local<v8::Context> context, v8::FunctionCallback callback) {
+    return v8::Function::New(context, callback).ToLocalChecked();
+  }
+
   void setTcpStreamConstructor(v8::Local<v8::Function>);
   v8::Local<v8::Function> getTcpStreamConstructor();
 };
