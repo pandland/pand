@@ -1,1 +1,1 @@
-console.log(`Is meta.js entry point? ${import.meta.main}`);
+console.log(`Is ${import.meta.url} entry point? ${import.meta.main}`);

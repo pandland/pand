@@ -1,5 +1,7 @@
-console.log = (arg) => { Runtime.print(`${arg}\n`); }
-console.error = (arg) => { Runtime.printerr(`${arg}\n`); }
+import { format } from 'std:inspect';
+
+console.log = (...args) => { Runtime.print(format(args) + "\n"); }
+console.error = (...args) => { Runtime.printerr(format(args) + "\n"); }
 
 globalThis.require = (module) => {
   if (typeof module === 'string') {

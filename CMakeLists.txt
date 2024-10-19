@@ -5,13 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if (MSVC)
-    # v8 checks __cplusplus version
-    add_compile_options(/Zc:__cplusplus)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt.lib")
-    set(CMAKE_CXX_FLAGS_RELEASE "/MD /D_ITERATOR_DEBUG_LEVEL=0")
-endif()
-
 add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 
 add_executable(pand 
