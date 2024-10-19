@@ -34,6 +34,7 @@ target_include_directories(pand SYSTEM
 # Our cmake deps
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/pandio pandio_build)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ada ada_build)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt)
 
 target_link_directories(pand
     PRIVATE
@@ -41,6 +42,7 @@ target_link_directories(pand
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/swcc/target/release)
 
+target_link_libraries(pand fmt::fmt)
 
 if(WIN32)
     target_link_libraries(pand
