@@ -1,6 +1,6 @@
 #pragma once
-#include <v8.h>
 #include <pandio.h>
+#include <v8.h>
 
 namespace pand::core {
 
@@ -13,6 +13,10 @@ public:
   static void throwCritical(v8::Local<v8::Value>);
 
   static void clearPendingRejects();
+
+  static void throwException(v8::Isolate *, std::string_view);
+
+  static void throwTypeException(v8::Isolate *, std::string_view);
 };
 
 } // namespace pand::core

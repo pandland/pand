@@ -2,6 +2,8 @@
 #include <cstdio>
 #include <iostream>
 #include <pandio.h>
+#include <string_view>
+#include <v8-exception.h>
 #include <v8.h>
 
 #include "errors.h"

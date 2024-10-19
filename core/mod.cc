@@ -192,11 +192,10 @@ void Mod::evaluate(v8::Isolate *isolate, Mod *mod) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::MaybeLocal<v8::Module> result = mod->initialize(isolate);
 
-  if (result.IsEmpty())
+  if (result.IsEmpty()) {
+    std::cerr << "result.isEmpty()\n";
     return;
-
-  if (mod->loadContent())
-    return;
+  }
 
   v8::Local<v8::Module> v8mod = result.ToLocalChecked();
   bool intialized = v8mod->InstantiateModule(context, Mod::load).IsJust();
@@ -252,15 +251,13 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::MaybeLocal<v8::Value> parent = meta->Get(
       isolate->GetCurrentContext(), Pand::symbol(isolate, "filename"));
   if (parent.IsEmpty()) {
-    isolate->ThrowException(v8::Exception::ReferenceError(
-        Pand::symbol(isolate, "Unable to get import.meta.dirname")));
+    Errors::throwException(isolate, "Unable to get import.meta.dirname");
     return;
   }
 
   v8::Local<v8::Value> path_to_resolve = args[0];
   if (!path_to_resolve->IsString()) {
-    isolate->ThrowException(v8::Exception::TypeError(
-        Pand::symbol(isolate, "Unable to get import.meta.dirname")));
+    Errors::throwException(isolate, "Unable to get import.meta.dirname");
     return;
   }
 
@@ -270,8 +267,8 @@ void Mod::resolve(const v8::FunctionCallbackInfo<v8::Value> &args) {
   std::string_view pathstr = *path;
   if (!pathstr.starts_with("/") && !pathstr.starts_with("./") &&
       !pathstr.starts_with("../")) {
-    isolate->ThrowException(v8::Exception::TypeError(Pand::symbol(
-        isolate, "Resolve path must be prefixed with / or ./ or ../")));
+    Errors::throwTypeException(
+        isolate, "Resolve path must be prefixed with / or ./ or ../");
     return;
   }
 

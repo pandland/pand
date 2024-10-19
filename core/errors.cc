@@ -15,6 +15,7 @@ void Errors::clearPendingRejects() {
   rejected_promises.clear();
 }
 
+// runs at the end of each event loop cycle as 'after_tick' pandio hook
 void Errors::checkPendingErrors(pd_io_t *ctx) {
   if (rejected_promises.empty()) {
     return;
@@ -56,11 +57,26 @@ void Errors::promiseRejectedCallback(v8::PromiseRejectMessage message) {
   }
 }
 
+/* throws v8::Exception::Error */
+void Errors::throwException(v8::Isolate *isolate, std::string_view message) {
+  v8::Local<v8::Value> error =
+      v8::Exception::Error(Pand::value(isolate, message));
+  isolate->ThrowException(error);
+}
+
+void Errors::throwTypeException(v8::Isolate *isolate, std::string_view message) {
+  v8::Local<v8::Value> error =
+      v8::Exception::TypeError(Pand::value(isolate, message));
+  isolate->ThrowException(error);
+}
+
+/* throws JS Error object as critical C++ exception */
 void Errors::throwCritical(v8::Local<v8::Value> value) {
   Pand *pand = Pand::get();
   if (value.IsEmpty()) {
-    std::cerr << "error: Empty thrown value\n" << std::endl;
-    throw std::runtime_error("empty thrown value");
+    const char *message = "Empty thrown value";
+    std::cerr << "error: " << message << '\n' << std::endl;
+    throw std::runtime_error(message);
   }
 
   v8::Isolate *isolate = pand->isolate;
