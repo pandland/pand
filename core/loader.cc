@@ -42,6 +42,11 @@ bool Module::read(v8::Isolate *isolate) {
     return true;
   }
 
+  if (fs::is_directory(fullpath)) {
+    Errors::throwException(isolate, "Is a directory");
+    return false;
+  }
+
   std::ifstream file(fullpath);
   if (!file.is_open()) {
     std::string reason;
@@ -254,31 +259,30 @@ void Loader::evaluate(v8::Isolate *isolate, Module *mod) {
 
   v8::MaybeLocal<v8::Module> result = mod->get(isolate);
   if (try_catch.HasCaught()) {
-    Errors::throwCritical(try_catch.Exception());
+    Errors::reportCritical(try_catch.Exception());
     return;
   }
 
   if (result.IsEmpty()) {
-    Errors::throwCritical(Errors::Error(isolate, "Unable to compile module"));
+    Errors::reportCritical("Unable to compile module");
     return;
   }
 
   v8::Local<v8::Module> v8mod = result.ToLocalChecked();
   bool success = v8mod->InstantiateModule(context, Loader::load).IsJust();
   if (try_catch.HasCaught()) {
-    Errors::throwCritical(try_catch.Exception());
+    Errors::reportCritical(try_catch.Exception());
     return;
   }
 
   if (!success) {
-    Errors::throwCritical(
-        Errors::Error(isolate, "Unable to instantiate module"));
+    Errors::reportCritical("Unable to instantiate module");
     return;
   }
 
   v8::MaybeLocal<v8::Value> evaluation = v8mod->Evaluate(context);
   if (evaluation.IsEmpty()) {
-    Errors::throwCritical(Errors::Error(isolate, "Unable to evaluate module"));
+    Errors::reportCritical("Unable to evaluate module");
     return;
   }
 
@@ -286,7 +290,7 @@ void Loader::evaluate(v8::Isolate *isolate, Module *mod) {
   if (value->IsPromise()) {
     v8::Local<v8::Promise> promise = value.As<v8::Promise>();
     if (promise->State() == v8::Promise::kRejected) {
-      Errors::throwCritical(promise->Result());
+      Errors::reportUncaught(promise->Result());
     }
   }
 }

@@ -95,7 +95,7 @@ void Pand::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
   v8::TryCatch try_catch(isolate);
   auto result = callback->Call(context, v8::Undefined(isolate), argc, argv);
   if (try_catch.HasCaught()) {
-    Errors::throwCritical(try_catch.Exception());
+    Errors::reportUncaught(try_catch.Exception());
   }
 }
 

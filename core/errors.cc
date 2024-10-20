@@ -1,8 +1,13 @@
 #include "errors.h"
+#include "fmt/color.h"
+#include "fmt/format.h"
 #include "loader.h"
 #include "pand.h"
 #include <iostream>
 #include <stdexcept>
+#include <string>
+#include <string_view>
+#include <v8-local-handle.h>
 
 namespace pand::core {
 
@@ -29,7 +34,7 @@ void Errors::checkPendingErrors(pd_io_t *ctx) {
   v8::Global<v8::Value> &result = rejected_promises.begin()->second;
   v8::Local<v8::Value> value = result.Get(isolate);
 
-  Errors::throwCritical(value);
+  Errors::reportUncaught(value, true);
 }
 
 void Errors::promiseRejectedCallback(v8::PromiseRejectMessage message) {
@@ -74,6 +79,7 @@ void Errors::throwException(v8::Isolate *isolate, std::string_view message) {
   isolate->ThrowException(error);
 }
 
+/* throws v8::Exception::TypeError */
 void Errors::throwTypeException(v8::Isolate *isolate,
                                 std::string_view message) {
   v8::Local<v8::Value> error =
@@ -81,35 +87,18 @@ void Errors::throwTypeException(v8::Isolate *isolate,
   isolate->ThrowException(error);
 }
 
-/* throws JS Error object as critical C++ exception */
-void Errors::throwCritical(std::string_view message) {}
-
-void Errors::throwCritical(v8::Local<v8::Value> value) {
-  Pand *pand = Pand::get();
-  if (value.IsEmpty()) {
-    const char *message = "Empty thrown value";
-    std::cerr << "error: " << message << '\n' << std::endl;
-    throw std::runtime_error(message);
-  }
-
-  v8::Isolate *isolate = pand->isolate;
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context;
-
-  v8::String::Utf8Value err_str(isolate, value);
-  v8::Local<v8::Message> err = v8::Exception::CreateMessage(isolate, value);
-
-  std::cerr << "error: Uncaught (in promise) " << *err_str << '\n';
-  // module should be found only if err object extends Error class.
-  Module *mod = Module::find(err->GetScriptOrigin().ScriptId());
+void Errors::tryPrintLine(v8::Isolate *isolate, v8::Local<v8::Context> context,
+                          v8::Local<v8::Message> message) {
+  /* it happens when user throws primitive or object that does not extend Error
+  class. */
+  Module *mod = Module::find(message->GetScriptOrigin().ScriptId());
   if (!mod) {
-    throw std::runtime_error(*err_str);
+    return;
   }
 
-  // log error:
   int current_line = 1;
-  int line = err->GetLineNumber(context).FromJust();
-  int col = err->GetStartColumn();
+  int line = message->GetLineNumber(context).FromJust();
+  int col = message->GetStartColumn();
 
   std::stringstream ss(mod->content);
   std::string str;
@@ -125,8 +114,12 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
     }
     current_line++;
   }
+}
 
-  v8::Local<v8::StackTrace> stack_trace = err->GetStackTrace();
+void Errors::tryPrintStackTrace(v8::Isolate *isolate,
+                                v8::Local<v8::Context> context,
+                                v8::Local<v8::Message> message) {
+  v8::Local<v8::StackTrace> stack_trace = message->GetStackTrace();
   if (!stack_trace.IsEmpty()) {
     int frame_count = stack_trace->GetFrameCount();
     for (int i = 0; i < frame_count; i++) {
@@ -143,8 +136,62 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
                 << ")\n";
     }
   }
+}
 
-  throw std::runtime_error(*err_str);
+void Errors::reportUncaught(v8::Local<v8::Value> value, bool promise) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context;
+
+  if (value.IsEmpty()) {
+    std::string reason = "Uncaught (empty)";
+    Errors::printError(reason);
+    throw std::runtime_error(reason);
+  }
+
+  v8::String::Utf8Value err_str(isolate, value);
+  std::string_view details = err_str.length() ? *err_str : "(empty)";
+
+  std::string reason =
+      fmt::format("Uncaught {}{}", promise ? "(in promise) " : "", details);
+  Errors::printError(reason);
+
+  v8::Local<v8::Message> err = v8::Exception::CreateMessage(isolate, value);
+  Errors::tryPrintLine(isolate, context, err);
+  Errors::tryPrintStackTrace(isolate, context, err);
+
+  throw std::runtime_error(reason);
+}
+
+void Errors::reportCritical(v8::Local<v8::Value> value) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context;
+
+  if (value.IsEmpty()) {
+    std::string reason = "unknown (empty)";
+    Errors::printError(reason);
+    throw std::runtime_error(reason);
+  }
+
+  v8::String::Utf8Value err_str(isolate, value);
+  std::string_view reason = err_str.length() ? *err_str : "(empty)";
+  Errors::printError(reason);
+
+  throw std::runtime_error(reason.data());
+}
+
+void Errors::reportCritical(std::string reason) {
+  Errors::printError(reason);
+  throw std::runtime_error(reason);
+}
+
+void Errors::printError(std::string_view reason) {
+  // TODO: switch to specialized library for output styling
+  fmt::print("{}{}\n", fmt::format(fg(fmt::color::red), "error"),
+             fmt::format(": {}", reason));
 }
 
 } // namespace pand::core

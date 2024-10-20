@@ -1,3 +1,5 @@
+import('./err.js')
+
 const obj = {
   hello: "world",
   bool: true,
