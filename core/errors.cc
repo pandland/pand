@@ -1,5 +1,5 @@
 #include "errors.h"
-#include "mod.h"
+#include "loader.h"
 #include "pand.h"
 #include <iostream>
 #include <stdexcept>
@@ -57,6 +57,16 @@ void Errors::promiseRejectedCallback(v8::PromiseRejectMessage message) {
   }
 }
 
+v8::Local<v8::Value> Errors::Error(v8::Isolate *isolate,
+                                   std::string_view message) {
+  return v8::Exception::Error(Pand::value(isolate, message));
+}
+
+v8::Local<v8::Value> Errors::TypeError(v8::Isolate *isolate,
+                                       std::string_view message) {
+  return v8::Exception::TypeError(Pand::value(isolate, message));
+}
+
 /* throws v8::Exception::Error */
 void Errors::throwException(v8::Isolate *isolate, std::string_view message) {
   v8::Local<v8::Value> error =
@@ -64,13 +74,16 @@ void Errors::throwException(v8::Isolate *isolate, std::string_view message) {
   isolate->ThrowException(error);
 }
 
-void Errors::throwTypeException(v8::Isolate *isolate, std::string_view message) {
+void Errors::throwTypeException(v8::Isolate *isolate,
+                                std::string_view message) {
   v8::Local<v8::Value> error =
       v8::Exception::TypeError(Pand::value(isolate, message));
   isolate->ThrowException(error);
 }
 
 /* throws JS Error object as critical C++ exception */
+void Errors::throwCritical(std::string_view message) {}
+
 void Errors::throwCritical(v8::Local<v8::Value> value) {
   Pand *pand = Pand::get();
   if (value.IsEmpty()) {
@@ -88,7 +101,7 @@ void Errors::throwCritical(v8::Local<v8::Value> value) {
 
   std::cerr << "error: Uncaught (in promise) " << *err_str << '\n';
   // module should be found only if err object extends Error class.
-  Mod *mod = Mod::find(err->GetScriptOrigin().ScriptId());
+  Module *mod = Module::find(err->GetScriptOrigin().ScriptId());
   if (!mod) {
     throw std::runtime_error(*err_str);
   }

@@ -10,12 +10,12 @@ add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 add_executable(pand 
     core/pand.h
     core/pand.cc
-    core/mod.h
-    core/mod.cc
-    core/runtime.h
-    core/runtime.cc
     core/errors.h
     core/errors.cc
+    core/loader.h
+    core/loader.cc
+    core/runtime.h
+    core/runtime.cc
     core/timer.h
     core/timer.cc
     core/tcp.h
@@ -27,9 +27,7 @@ add_executable(pand
 
 target_include_directories(pand SYSTEM
     PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/include
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/swcc/include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/include)
 
 # Our cmake deps
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/pandio pandio_build)

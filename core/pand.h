@@ -3,7 +3,6 @@
 #include <libplatform/libplatform.h>
 #include <pandio.h>
 #include <string>
-#include <v8-object.h>
 #include <v8.h>
 
 namespace pand::core {

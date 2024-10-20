@@ -3,11 +3,10 @@
 #include <iostream>
 #include <pandio.h>
 #include <string_view>
-#include <v8-exception.h>
 #include <v8.h>
 
 #include "errors.h"
-#include "mod.h"
+#include "loader.h"
 #include "runtime.h"
 
 namespace pand::core {
@@ -29,8 +28,8 @@ Pand::Pand() {
 
 Pand::~Pand() {
   Errors::clearPendingRejects();
-  Mod::clearMods();
-  Mod::clearResolveCache();
+  Loader::clearMods();
+  Loader::clearResolveCache();
   tcpStreamConstructor.Reset();
   isolate->Dispose();
   v8::V8::Dispose();
@@ -71,12 +70,13 @@ void Pand::run(const std::string &entryfile, int argc, char **argv) {
 
   isolate->SetCaptureStackTraceForUncaughtExceptions(true, 10);
   isolate->SetPromiseRejectCallback(Errors::promiseRejectedCallback);
-  isolate->SetHostInitializeImportMetaObjectCallback(Mod::setMeta);
-  isolate->SetHostImportModuleDynamicallyCallback(Mod::dynamicImport);
-  Mod::execInternal(isolate, "std:bootstrap");
-  Mod::execScript(isolate, entryfile);
+  isolate->SetHostInitializeImportMetaObjectCallback(Loader::setMeta);
+  isolate->SetHostImportModuleDynamicallyCallback(Loader::dynamicImport);
+  Loader::execInternal(isolate, "std:bootstrap");
+  Loader::execScript(isolate, entryfile);
 
   pd_io_run(ctx);
+  Errors::checkPendingErrors(ctx);
 }
 
 void Pand::makeCallback(v8::Local<v8::Object> &obj, v8::Isolate *isolate,
