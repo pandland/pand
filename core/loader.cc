@@ -103,9 +103,10 @@ v8::MaybeLocal<v8::Module> Loader::fromCache(v8::Isolate *isolate,
 
 void Loader::execScript(v8::Isolate *isolate, std::string_view filepath) {
   fs::path path(filepath);
-  std::string fullpath = path.is_absolute()
-                             ? path.string()
-                             : Loader::resolveModulePath(fs::current_path(), filepath);
+  std::string fullpath =
+      path.is_absolute()
+          ? path.string()
+          : Loader::resolveModulePath(fs::current_path(), filepath);
   std::string url = Loader::pathURL(fullpath);
   Module *mod = new Module(fullpath, url, Module::Type::kScript);
   mod->isMain = true;
@@ -217,12 +218,19 @@ v8::MaybeLocal<v8::Promise> Loader::dynamicImport(
 
   v8::Local<v8::Module> v8_mod = v8mod.ToLocalChecked();
   if (v8_mod->InstantiateModule(context, Loader::load).IsJust()) {
-    v8::Local<v8::Value> val;
-    if (v8_mod->Evaluate(context).ToLocal(&val)) {
+    v8::Local<v8::Value> value;
+    if (v8_mod->Evaluate(context).ToLocal(&value)) {
       v8::Local<v8::Value> _namespace = v8_mod->GetModuleNamespace();
+      if (value->IsPromise()) {
+        v8::Local<v8::Promise> promise = value.As<v8::Promise>();
+        if (promise->State() == v8::Promise::kRejected) {
+          resolver->Reject(context, promise->Result()).Check();
+          return resolver->GetPromise();
+        }
+      }
+
       resolver->Resolve(context, _namespace).Check();
       return resolver->GetPromise();
-
     } else {
       resolver
           ->Reject(context, Errors::Error(isolate, "Error evaluating module"))
