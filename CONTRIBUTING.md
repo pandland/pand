@@ -28,6 +28,7 @@ cmake --build .
 
 > `v8.cmake` script is not tested yet on fresh Linux installation.
 
+3. **IDE configuration:** If you are using **Visual Studio Code** I recommend using `clangd` for autocompletion, because C/C++ extension from Microsoft is very slow to work on this project. I suggest newer version of `clangd`, especially on Debian/Ubuntu, you can try nightly version: https://apt.llvm.org/
 
 ### Code Guidelines
 

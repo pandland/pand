@@ -1,5 +1,4 @@
 #include "timer.h"
-#include "errors.h"
 
 namespace pand::core {
 
