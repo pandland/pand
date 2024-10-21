@@ -5,14 +5,15 @@
 #include "pand.h"
 #include <ada.h>
 #include <filesystem>
+#include <memory>
 
 namespace pand::core {
 
-std::unordered_map<int, Module *> modules;
+std::unordered_map<int, std::shared_ptr<Module>> modules;
 std::unordered_map<std::string, v8::Global<v8::Module>> resolve_cache;
 
 
-Module *Module::find(int id) {
+std::shared_ptr<Module> Module::find(int id) {
   auto it = modules.find(id);
   if (it == modules.end()) {
     return nullptr;
@@ -80,7 +81,7 @@ v8::MaybeLocal<v8::Module> Module::compile(v8::Isolate *isolate) {
 
   if (v8::ScriptCompiler::CompileModule(isolate, &script_source)
           .ToLocal(&v8mod)) {
-    modules.emplace(v8mod->ScriptId(), this);
+    modules.emplace(v8mod->ScriptId(), shared_from_this());
     resolve_cache[url].Reset(isolate, v8mod);
   }
 
@@ -88,7 +89,7 @@ v8::MaybeLocal<v8::Module> Module::compile(v8::Isolate *isolate) {
 }
 
 
-v8::MaybeLocal<v8::Module> Module::get(v8::Isolate *isolate) {
+v8::MaybeLocal<v8::Module> Module::init(v8::Isolate *isolate) {
   if (read(isolate)) {
     return compile(isolate);
   }
@@ -113,14 +114,14 @@ void Loader::execScript(v8::Isolate *isolate, std::string_view filepath) {
           ? path.string()
           : Loader::resolveModulePath(fs::current_path(), filepath);
   std::string url = Loader::pathURL(fullpath);
-  Module *mod = new Module(fullpath, url, Module::Type::kScript);
+  auto mod = std::make_shared<Module>(fullpath, url, Module::Type::kScript);
   mod->isMain = true;
   return Loader::evaluate(isolate, mod);
 }
 
 
 void Loader::execInternal(v8::Isolate *isolate, std::string_view name) {
-  Module *mod = new Module(name, name, Module::Type::kInternal);
+  auto mod = std::make_shared<Module>(name, name, Module::Type::kInternal);
   return Loader::evaluate(isolate, mod);
 }
 
@@ -133,7 +134,7 @@ Loader::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
   v8::String::Utf8Value specifier_(isolate, specifier);
   std::string_view specifier_str = *specifier_;
 
-  Module *parent = Module::find(referrer->ScriptId());
+  auto parent = Module::find(referrer->ScriptId());
   if (!parent) {
     Errors::throwException(
         isolate,
@@ -154,9 +155,9 @@ Loader::load(v8::Local<v8::Context> context, v8::Local<v8::String> specifier,
 
   Module::Type type =
       isInternal ? Module::Type::kInternal : Module::Type::kScript;
-  Module *mod = new Module(path, url, type);
+  auto mod = std::make_shared<Module>(path, url, type);
 
-  return mod->get(isolate);
+  return mod->init(isolate);
 }
 
 
@@ -185,7 +186,7 @@ v8::MaybeLocal<v8::Promise> Loader::dynamicImport(
     return resolver->GetPromise();
   }
 
-  Module *parent = Module::find(cached_parent.ToLocalChecked()->ScriptId());
+  auto parent = Module::find(cached_parent.ToLocalChecked()->ScriptId());
   if (!parent) {
     resolver
         ->Reject(context,
@@ -206,8 +207,8 @@ v8::MaybeLocal<v8::Promise> Loader::dynamicImport(
   v8::TryCatch try_catch(isolate);
   auto cached = Loader::fromCache(isolate, url);
   if (cached.IsEmpty()) {
-    Module *mod = new Module(path, url, type);
-    v8mod = mod->get(isolate);
+    auto mod = std::make_shared<Module>(path, url, type);
+    v8mod = mod->init(isolate);
   }
 
   if (try_catch.HasCaught()) {
@@ -252,12 +253,12 @@ v8::MaybeLocal<v8::Promise> Loader::dynamicImport(
 }
 
 
-void Loader::evaluate(v8::Isolate *isolate, Module *mod) {
+void Loader::evaluate(v8::Isolate *isolate, std::shared_ptr<Module> mod) {
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::TryCatch try_catch(isolate);
 
-  v8::MaybeLocal<v8::Module> result = mod->get(isolate);
+  v8::MaybeLocal<v8::Module> result = mod->init(isolate);
   if (try_catch.HasCaught()) {
     Errors::reportCritical(try_catch.Exception());
     return;
@@ -365,12 +366,7 @@ void Loader::clearResolveCache() {
 }
 
 
-void Loader::clearMods() {
-  for (auto &entry : modules) {
-    delete entry.second;
-  }
-  resolve_cache.clear();
-}
+void Loader::clearMods() { resolve_cache.clear(); }
 
 
 std::string Loader::resolveModulePath(fs::path parent,

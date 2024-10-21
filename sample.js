@@ -12,7 +12,5 @@ const obj = {
   }
 }
 
-throw new Error("Hello");
-
 console.log("Hello world", 2323, new Date());
 console.log(obj);

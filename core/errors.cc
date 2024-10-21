@@ -90,7 +90,7 @@ void Errors::tryPrintLine(v8::Isolate *isolate, v8::Local<v8::Context> context,
                           v8::Local<v8::Message> message) {
   /* it happens when user throws primitive or object that does not extend Error
   class. */
-  Module *mod = Module::find(message->GetScriptOrigin().ScriptId());
+  auto mod = Module::find(message->GetScriptOrigin().ScriptId());
   if (!mod) {
     return;
   }

@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <v8.h>
@@ -8,7 +9,7 @@ namespace fs = std::filesystem;
 
 namespace pand::core {
 
-struct Module {
+struct Module: public std::enable_shared_from_this<Module> {
   enum class Type { kScript, kInternal };
 
   std::string fullpath;
@@ -24,9 +25,9 @@ struct Module {
 
   v8::MaybeLocal<v8::Module> compile(v8::Isolate *);
 
-  v8::MaybeLocal<v8::Module> get(v8::Isolate *);
+  v8::MaybeLocal<v8::Module> init(v8::Isolate *);
 
-  static Module *find(int);
+  static std::shared_ptr<Module> find(int);
 
   Module(std::string_view, std::string_view, Type);
 };
@@ -35,7 +36,7 @@ class Loader {
 public:
   static v8::MaybeLocal<v8::Module> fromCache(v8::Isolate *, std::string);
 
-  static void evaluate(v8::Isolate *, Module *);
+  static void evaluate(v8::Isolate *, std::shared_ptr<Module>);
 
   static void execScript(v8::Isolate *, std::string_view);
 
