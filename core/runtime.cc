@@ -14,6 +14,8 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
                          v8::Isolate *isolate) {
   runtime_template->Set(isolate, "print",
                         v8::FunctionTemplate::New(isolate, Runtime::print));
+  runtime_template->Set(isolate, "printerr",
+                        v8::FunctionTemplate::New(isolate, Runtime::printerr));
   runtime_template->Set(isolate, "getenv",
                         v8::FunctionTemplate::New(isolate, Runtime::getenv));
   runtime_template->Set(isolate, "bind",
@@ -52,6 +54,13 @@ void Runtime::print(const v8::FunctionCallbackInfo<v8::Value> &args) {
   std::cout << *str;
 }
 
+void Runtime::printerr(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  if (args.Length() < 1)
+    return;
+  v8::String::Utf8Value str(args.GetIsolate(), args[0]);
+  std::cerr << *str;
+}
+
 void Runtime::cwd(const v8::FunctionCallbackInfo<v8::Value> &args) {
   args.GetReturnValue().Set(
       Pand::value(args.GetIsolate(), std::filesystem::current_path().string()));
@@ -71,6 +80,7 @@ void Runtime::exit(const v8::FunctionCallbackInfo<v8::Value> &args) {
 void Runtime::getenv(const v8::FunctionCallbackInfo<v8::Value> &args) {
   assert(args.Length() == 1);
   v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
 
   if (!args[0]->IsString()) {
     isolate->ThrowException(Pand::symbol(isolate, "Argument must be a string"));

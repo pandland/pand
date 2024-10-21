@@ -7,7 +7,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <v8-local-handle.h>
 
 namespace pand::core {
 

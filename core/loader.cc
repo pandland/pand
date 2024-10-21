@@ -43,7 +43,7 @@ bool Module::read(v8::Isolate *isolate) {
   }
 
   if (fs::is_directory(fullpath)) {
-    Errors::throwException(isolate, "Is a directory");
+    Errors::throwTypeException(isolate, "Is a directory");
     return false;
   }
 
