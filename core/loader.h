@@ -1,6 +1,5 @@
 #pragma once
 #include <filesystem>
-#include <iostream>
 #include <string>
 #include <string_view>
 #include <v8.h>
@@ -30,6 +29,7 @@ struct Module: public std::enable_shared_from_this<Module> {
   static std::shared_ptr<Module> find(int);
 
   Module(std::string_view, std::string_view, Type);
+  ~Module();
 };
 
 class Loader {
@@ -58,9 +58,7 @@ public:
   static void setMeta(v8::Local<v8::Context>, v8::Local<v8::Module>,
                       v8::Local<v8::Object>);
 
-  static void clearResolveCache();
-
-  static void clearMods();
+  static void cleanup();
 
   static std::string resolveModulePath(fs::path, std::string_view);
 

@@ -10,6 +10,7 @@ public:
 
   static void promiseRejectedCallback(v8::PromiseRejectMessage);
 
+  static void removePendingReject(int);
   static void clearPendingRejects();
 
   static v8::Local<v8::Value> Error(v8::Isolate *, std::string_view);

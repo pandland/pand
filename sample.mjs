@@ -1,3 +1,11 @@
+
+try {
+  // very edge case
+  await import("./err.js");
+} catch (err) {
+  console.log("Handled dynamic import:", err.message);
+}
+
 const obj = {
   hello: "world",
   bool: true,

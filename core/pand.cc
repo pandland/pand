@@ -27,8 +27,7 @@ Pand::Pand() {
 
 Pand::~Pand() {
   Errors::clearPendingRejects();
-  Loader::clearMods();
-  Loader::clearResolveCache();
+  Loader::cleanup();
   tcpStreamConstructor.Reset();
   isolate->Dispose();
   v8::V8::Dispose();

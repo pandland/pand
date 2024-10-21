@@ -19,6 +19,11 @@ void Errors::clearPendingRejects() {
   rejected_promises.clear();
 }
 
+void Errors::removePendingReject(int promiseId) {
+  rejected_promises[promiseId].Reset();
+  rejected_promises.erase(promiseId);
+}
+
 // runs at the end of each event loop cycle as 'after_tick' pandio hook
 void Errors::checkPendingErrors(pd_io_t *ctx) {
   if (rejected_promises.empty()) {

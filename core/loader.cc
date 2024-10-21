@@ -5,10 +5,15 @@
 #include "pand.h"
 #include <ada.h>
 #include <filesystem>
-#include <memory>
 
 namespace pand::core {
 
+/* we may consider using std::unique_ptr, because module loaded once,
+ * will live almost whole program and std::unordered_map would be the only
+ * owner. I have some problems with adding "this" (raw pointer) to
+ * std::unordered_map<int, std::unique_ptr> inside instance method and I think
+ * moving to std::unique_ptr will require some code refactor, so using
+ * std::shared_ptr is just easier memory-safety solution for now. */
 std::unordered_map<int, std::shared_ptr<Module>> modules;
 std::unordered_map<std::string, v8::Global<v8::Module>> resolve_cache;
 
@@ -26,6 +31,14 @@ Module::Module(std::string_view fullpath, std::string_view url, Type type)
     : fullpath(fullpath), url(url), type(type) {
   if (type == Type::kScript) {
     dirname = fs::path(fullpath).parent_path().string();
+  }
+}
+
+Module::~Module() {
+  auto it = resolve_cache.find(url);
+  if (it != resolve_cache.end()) {
+    it->second.Reset();
+    resolve_cache.erase(it);
   }
 }
 
@@ -230,6 +243,10 @@ v8::MaybeLocal<v8::Promise> Loader::dynamicImport(
       if (value->IsPromise()) {
         v8::Local<v8::Promise> promise = value.As<v8::Promise>();
         if (promise->State() == v8::Promise::kRejected) {
+          /* imagine this as rethrowing error, because we want to be able to
+             handle catch "await import()" edge case (when module throws error
+             on top level): */
+          Errors::removePendingReject(promise->GetIdentityHash());
           resolver->Reject(context, promise->Result()).Check();
           return resolver->GetPromise();
         }
@@ -358,15 +375,7 @@ void Loader::setMeta(v8::Local<v8::Context> context,
 }
 
 
-void Loader::clearResolveCache() {
-  for (auto &entry : resolve_cache) {
-    entry.second.Reset();
-  }
-  resolve_cache.clear();
-}
-
-
-void Loader::clearMods() { resolve_cache.clear(); }
+void Loader::cleanup() { modules.clear(); }
 
 
 std::string Loader::resolveModulePath(fs::path parent,
