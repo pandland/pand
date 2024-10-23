@@ -15,10 +15,21 @@ function onTimeout() {
   console.log(promise);
 }
 
-//console.log(typedArr);
+function* myGenerator() {}
+
+const target = { };
+const handler = {
+  get: (obj, prop) => `Intercepted ${prop}`
+};
+const proxy = new Proxy(target, handler);
+console.log(proxy);  // Proxy {}
+
+//console.log(myGenerator);
+console.log(NaN);
+console.log(typedArr);
 //console.log(err);
 console.log(promise);
-//console.log(plainObj);
+console.log(plainObj);
 //console.log(WebAssembly);
 //console.log(Hi);
 //console.log(hi);

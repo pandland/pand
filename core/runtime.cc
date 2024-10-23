@@ -27,6 +27,8 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
   runtime_template->Set(
       isolate, "promiseState",
       v8::FunctionTemplate::New(isolate, Runtime::promiseState));
+  runtime_template->Set(isolate, "isProxy",
+                        v8::FunctionTemplate::New(isolate, Runtime::isProxy));
   runtime_template->Set(isolate, "platform",
                         Pand::symbol(isolate, pd_get_platform()));
   runtime_template->Set(isolate, "version",
@@ -119,6 +121,19 @@ void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
 
   args.GetReturnValue().Set(exports);
+}
+
+void Runtime::isProxy(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+
+  if (args.Length() < 1 || !args[0]->IsObject()) {
+    args.GetReturnValue().Set(Pand::boolean(isolate, false));
+    return;
+  }
+
+  v8::Local<v8::Object> obj = args[0].As<v8::Object>();
+  args.GetReturnValue().Set(Pand::boolean(isolate, obj->IsProxy()));
 }
 
 // important function for inspecting Promise objects

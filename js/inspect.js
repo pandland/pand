@@ -38,7 +38,7 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   }
 
   if (value instanceof Error) {
-    return value.stack;
+    return value.stack || `${value.name}: ${value.message}`;
   }
 
   if (value instanceof Promise) {
@@ -59,9 +59,9 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     seen.add(value);
 
     let str = "";
-    if (value.constructor && !isPlainObject(value)) {
-      str += `[${value.constructor.name || "Object"}] `
-    } else if (value[Symbol.toStringTag]) {
+    if (value.constructor && !isPlainObject(value) && value.constructor.name) {
+      str += `[${value.constructor.name}] `
+    } else if (!Runtime.isProxy(value) && value[Symbol.toStringTag]) {
       str += `Object [${value[Symbol.toStringTag]}] `;
     }
 
@@ -71,7 +71,8 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     
     let keys = Object.keys(value);
     let keyValues = keys.map(key => `${key}: ${stringify(value[key], nextDepth, seen)}`);
-    return str + `{ ${keyValues.join(', ')} }`;
+    const content = keyValues.join(', ');
+    return str + "{" + (content.length > 0 ? ` ${content} }` : "}");
   }
 
   return String(value);
@@ -109,7 +110,7 @@ function inspectTypedArray(buff, limit = 100) {
     str += `,\n  ... ${remainingItems} more item${remainingItems != 1 ? 's' : ''}`;
   }
 
-  str += `${multiline ? "\n" : ""} ]`;
+  str += `${multiline ? "\n" : " "}]`;
   return str;
 }
 
