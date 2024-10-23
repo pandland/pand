@@ -54,6 +54,10 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     return inspectTypedArray(value);
   }
 
+  if (value instanceof RegExp) {
+    return String(value);
+  }
+
   if (value instanceof Set) {
     let entries = Array.from(value).map(v => stringify(v, nextDepth, seen));
     return `Set {${entries.join(', ')}}`;
