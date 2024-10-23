@@ -6,7 +6,7 @@ function isConstructor(func) {
   return typeof func === 'function' && !!func.prototype && func.prototype.constructor === func && func.toString().startsWith('class');
 }
 
-export function stringify(value, depth = 2, seen = new WeakSet()) {
+export function stringify(value, depth, seen = new WeakSet()) {
   const nextDepth = depth - 1;
 
   if (value === null) return 'null';
@@ -21,12 +21,17 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     return `[${typename} ${value.name || '(anonymous)'}]`;
   }
 
+  if (typeof value === 'object') {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+  }
+
   if (value instanceof Date) {
     return value.toISOString();
   }
 
   if (Array.isArray(value)) {
-    return `[ ${value.map(v => stringify(v, nextDepth, seen)).join(', ')} ]`;
+    return formatArray(value, nextDepth, seen);
   }
 
   if (value instanceof Map) {
@@ -35,6 +40,14 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
       entries.push(`${stringify(key, nextDepth, seen)} => ${stringify(val, nextDepth, seen)}`);
     });
     return `Map {${entries.join(', ')}}`;
+  }
+
+  if (value instanceof WeakMap) {
+    return "WeakMap {}";
+  }
+
+  if (value instanceof WeakSet) {
+    return "WeakSet {}";
   }
 
   if (value instanceof Error) {
@@ -69,14 +82,12 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   }
 
   if (value instanceof Set) {
-    let entries = Array.from(value).map(v => stringify(v, nextDepth, seen));
-    return `Set {${entries.join(', ')}}`;
+    let entries = Array.from(value).map(v => stringify(v, nextDepth, seen)).join(', ');
+    let content = value.size > 0 ? `{ ${entries} }` : "{}";
+    return `Set(${value.size}) ${content}`;
   }
 
   if (typeof value === 'object') {
-    if (seen.has(value)) return '[Circular]';
-    seen.add(value);
-
     let str = "";
     if (value.constructor && !isPlainObject(value) && value.constructor.name) {
       str += `[${value.constructor.name}] `
@@ -95,6 +106,37 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   }
 
   return String(value);
+}
+
+function formatArray(arr, depth, seen) {
+  if (depth <= 0) {
+    return `[Array]`;
+  }
+
+  if (arr.length === 0) {
+    return "[]";
+  }
+
+  const output = [];
+
+  let remaining = 0;
+  for (let i = 0; i < arr.length; ++i) {
+    if (!Object.hasOwn(arr, i)) {
+      remaining++;
+    } else if (remaining) {
+      output.push(`<${remaining} empty item${remaining != 1 ? 's' : ''}>`);
+      output.push(stringify(arr[i], depth, seen));
+      remaining = 0;
+    } else {
+      output.push(stringify(arr[i], depth, seen));
+    }
+  }
+  
+  if (remaining) {
+    output.push(`<${remaining} empty items>`);
+  }
+
+  return `[ ${output.join(', ')} ]`;
 }
 
 function stringifyByteArray(buff, totalLength, limit = 100) {

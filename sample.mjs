@@ -1,47 +1,16 @@
-class Hi {}
-const hi = () => {}
-const plainObj = { id: 200, message: 'Hello"' };
-plainObj.ref = plainObj;
+const set = new Set();
+set.add(set);
+set.add(40);
 
-const err = new Error("hello");
-const typedArr = new Uint8Array(102);
+const arr = [];
+const arr2 = [1, 2, 3, [22, [22, 400, 100, [20,[40, { id: 20 }]]]]];
+arr[0] = undefined;
+arr[1] = "heheszki"
+arr[2] = arr;
+arr[3] = 0
+arr[4] = null;
+arr[5] = arr2;
+arr[7] = 2;
 
-const re = /ab+c/;
-//const re = new RegExp("ab+c");
-
-const promise = new Promise((resolve, reject) => {
-  setTimeout(() => {
-    resolve(22);
-    onTimeout();
-  }, 1000);
-});
-
-function onTimeout() {
-  console.log(promise);
-}
-
-const buf = new ArrayBuffer(11);
-console.log(buf);
-console.log(new DataView(buf));
-const sab = new SharedArrayBuffer(1024);
-console.log(sab);
-function* myGenerator() {}
-
-console.log(re);
-
-const target = {};
-const handler = {
-  get: (obj, prop) => `Intercepted ${prop}`
-};
-const proxy = new Proxy(target, handler);
-///console.log(proxy);  // Proxy {}
-
-//console.log(myGenerator);
-//console.log(NaN);
-//console.log(typedArr);
-//console.log(err);
-console.log(promise);
-//console.log(plainObj);
-//console.log(WebAssembly);
-//console.log(Hi);
-//console.log(hi);
+//console.log(format([arr]));
+console.log(arr);
