@@ -23,8 +23,8 @@ function onTimeout() {
 const buf = new ArrayBuffer(11);
 console.log(buf);
 console.log(new DataView(buf));
-
-
+const sab = new SharedArrayBuffer(1024);
+console.log(sab);
 function* myGenerator() {}
 
 console.log(re);

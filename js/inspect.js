@@ -50,6 +50,11 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     return `ArrayBuffer(${value.byteLength}) ${stringifyByteArray(buf, value.byteLength)}`;
   }
 
+  if (value instanceof SharedArrayBuffer) {
+    const buf = new Uint8Array(value);
+    return `SharedArrayBuffer(${value.byteLength}) ${stringifyByteArray(buf, value.byteLength)}`;
+  }
+
   if (value instanceof DataView) {
     const buf = new Uint8Array(value.buffer);
     return `DataView(${value.byteLength}) ${stringifyByteArray(buf, value.byteLength)}`;
