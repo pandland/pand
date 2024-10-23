@@ -1,3 +1,5 @@
+'use strict';
+
 export class AssertionError extends Error {
   constructor(message) {
     super(message);

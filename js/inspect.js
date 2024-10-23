@@ -1,3 +1,5 @@
+'use strict';
+
 export function stringify(value, depth = 2, seen = new WeakSet()) {
   const nextDepth = depth - 1;
 
@@ -28,6 +30,10 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     return `Map {${entries.join(', ')}}`;
   }
 
+  if (value instanceof Error) {
+    return value.stack;
+  }
+
   if (ArrayBuffer.isView(value)) {
     return inspectTypedArray(value);
   }
@@ -41,13 +47,14 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     if (seen.has(value)) return '[Circular]';
     seen.add(value);
 
+    const typeName = `[Object ${value.name ? `${ value.name}]` : "]"}`;
     if (depth <= 0) {
-      return `[Object${value.name ? `${ value.name}]` : "]"}`;
+      return typeName;
     }
     
     let keys = Object.keys(value);
     let keyValues = keys.map(key => `${key}: ${stringify(value[key], nextDepth, seen)}`);
-    return `{ ${keyValues.join(', ')} }`;
+    return `${typeName} { ${keyValues.join(', ')} }`;
   }
 
   return String(value);
@@ -57,11 +64,17 @@ function inspectTypedArray(buff, limit = 100) {
   const typeName = buff.constructor.name || 'TypedArray';
   const totalLength = buff.length;
   const rowLimit = 12;
-  const multiline = totalLength >= rowLimit;
+  const multiline = totalLength > rowLimit;
   const visibleItems = Array.from(buff.slice(0, limit));
 
   const numRows = Math.ceil(visibleItems.length / rowLimit);
-  let str = `${typeName}(${totalLength}) [${multiline ? "\n" : ""}  `;
+  let str = `${typeName}(${totalLength}) `;
+
+  if (totalLength === 0) {
+    return str + "[]";
+  }
+
+   str += `[${multiline ? "\n " : ""} `
 
   for (let row = 0; row < numRows; row++) {
     const start = row * Math.ceil(visibleItems.length / numRows);
