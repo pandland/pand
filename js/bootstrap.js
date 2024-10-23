@@ -18,7 +18,7 @@ globalThis.setTimeout = (cb, delay, ...args) => {
     cb(...args);
   }
 
-  return timer.setTimeout(delay);
+  return timer.setTimeout(delay || 0);
 }
 
 globalThis.setInterval = (cb, delay, ...args) => {
@@ -27,7 +27,7 @@ globalThis.setInterval = (cb, delay, ...args) => {
     cb(...args);
   }
 
-  return timer.setInterval(delay);
+  return timer.setInterval(delay || 0);
 }
 
 globalThis.clearInterval = Timer.clear;

@@ -165,7 +165,7 @@ void Errors::reportUncaught(v8::Local<v8::Value> value, bool promise) {
   Errors::tryPrintLine(isolate, context, err);
   Errors::tryPrintStackTrace(isolate, context, err);
 
-  throw std::runtime_error(reason);
+  throw CriticalException();
 }
 
 void Errors::reportCritical(v8::Local<v8::Value> value) {
@@ -177,19 +177,19 @@ void Errors::reportCritical(v8::Local<v8::Value> value) {
   if (value.IsEmpty()) {
     std::string reason = "unknown (empty)";
     Errors::printError(reason);
-    throw std::runtime_error(reason);
+    throw CriticalException();
   }
 
   v8::String::Utf8Value err_str(isolate, value);
   std::string_view reason = err_str.length() ? *err_str : "(empty)";
   Errors::printError(reason);
 
-  throw std::runtime_error(reason.data());
+  throw CriticalException();
 }
 
 void Errors::reportCritical(std::string reason) {
   Errors::printError(reason);
-  throw std::runtime_error(reason);
+  throw CriticalException();
 }
 
 void Errors::printError(std::string_view reason) {

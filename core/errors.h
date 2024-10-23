@@ -4,6 +4,14 @@
 
 namespace pand::core {
 
+class CriticalException : public std::exception {
+public:
+    const char* what() const noexcept override {
+        // we have own logging system, so message does not matter
+        return "Critical error occurred";
+    }
+};
+
 class Errors {
 public:
   static void checkPendingErrors(pd_io_t *ctx);

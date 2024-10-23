@@ -1,5 +1,6 @@
 #include "pand.h"
 #include <cstdio>
+#include <iostream>
 #include <pandio.h>
 #include <string_view>
 #include <v8.h>
@@ -36,17 +37,8 @@ Pand::~Pand() {
 }
 
 Pand *Pand::get() {
-  if (!instance) {
-    instance = new Pand();
-  }
-  return instance;
-}
-
-void Pand::destroy() {
-  if (instance) {
-    delete instance;
-    instance = nullptr;
-  }
+  static Pand instance;
+  return &instance;
 }
 
 void Pand::run(const std::string &entryfile) {
