@@ -4,7 +4,6 @@
 #include "loader.h"
 #include "pand.h"
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -151,7 +150,7 @@ void Errors::reportUncaught(v8::Local<v8::Value> value, bool promise) {
   if (value.IsEmpty()) {
     std::string reason = "Uncaught (empty)";
     Errors::printError(reason);
-    throw std::runtime_error(reason);
+    throw CriticalException();
   }
 
   v8::String::Utf8Value err_str(isolate, value);

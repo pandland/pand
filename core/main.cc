@@ -1,8 +1,6 @@
 #include "errors.h"
 #include "pand.h"
 #include <iostream>
-#include <new>
-#include <stdexcept>
 
 using namespace pand::core;
 
@@ -18,7 +16,6 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  // init Pand singleton
   Pand *pand = Pand::get();
   try {
     const char *entryfile = argv[1];

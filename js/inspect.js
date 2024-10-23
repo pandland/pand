@@ -28,6 +28,10 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     return `Map {${entries.join(', ')}}`;
   }
 
+  if (ArrayBuffer.isView(value)) {
+    return inspectTypedArray(value);
+  }
+
   if (value instanceof Set) {
     let entries = Array.from(value).map(v => stringify(v, nextDepth, seen));
     return `Set {${entries.join(', ')}}`;
@@ -47,6 +51,36 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   }
 
   return String(value);
+}
+
+function inspectTypedArray(buff, limit = 100) {
+  const typeName = buff.constructor.name || 'TypedArray';
+  const totalLength = buff.length;
+  const rowLimit = 12;
+  const multiline = totalLength >= rowLimit;
+  const visibleItems = Array.from(buff.slice(0, limit));
+
+  const numRows = Math.ceil(visibleItems.length / rowLimit);
+  let str = `${typeName}(${totalLength}) [${multiline ? "\n" : ""}  `;
+
+  for (let row = 0; row < numRows; row++) {
+    const start = row * Math.ceil(visibleItems.length / numRows);
+    const end = start + Math.ceil(visibleItems.length / numRows);
+
+    str += visibleItems.slice(start, end).join(', ');
+
+    if (row < numRows - 1) {
+      str += ',\n  ';
+    }
+  }
+
+  if (totalLength > limit) {
+    const remainingItems = totalLength - limit;
+    str += `,\n  ... ${remainingItems} more item${remainingItems != 1 ? 's' : ''}`;
+  }
+
+  str += `${multiline ? "\n" : ""} ]`;
+  return str;
 }
 
 export function format(args, maxDepth) {
