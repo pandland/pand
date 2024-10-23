@@ -45,6 +45,11 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     return `Promise { <${Runtime.promiseState(value)}> }`;
   }
 
+  if (value instanceof ArrayBuffer) {
+    const buf = new Uint8Array(value);
+    return `ArrayBuffer(${value.byteLength}) ${stringifyByteArray(buf, value.byteLength)}`;
+  }
+
   if (ArrayBuffer.isView(value)) {
     return inspectTypedArray(value);
   }
@@ -78,21 +83,16 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   return String(value);
 }
 
-function inspectTypedArray(buff, limit = 100) {
-  const typeName = buff.constructor.name || 'TypedArray';
-  const totalLength = buff.length;
+function stringifyByteArray(buff, totalLength, limit = 100) {
   const rowLimit = 12;
   const multiline = totalLength > rowLimit;
   const visibleItems = Array.from(buff.slice(0, limit));
-
   const numRows = Math.ceil(visibleItems.length / rowLimit);
-  let str = `${typeName}(${totalLength}) `;
-
   if (totalLength === 0) {
-    return str + "[]";
+    return "[]";
   }
 
-   str += `[${multiline ? "\n " : ""} `
+  let str = `[${multiline ? "\n " : ""} `
 
   for (let row = 0; row < numRows; row++) {
     const start = row * Math.ceil(visibleItems.length / numRows);
@@ -111,6 +111,14 @@ function inspectTypedArray(buff, limit = 100) {
   }
 
   str += `${multiline ? "\n" : " "}]`;
+  return str;
+}
+
+function inspectTypedArray(buff, limit = 100) {
+  const typeName = buff.constructor.name || 'TypedArray';
+  const totalLength = buff.length;
+
+  let str = `${typeName}(${totalLength}) ${stringifyByteArray(buff, totalLength)}`;
   return str;
 }
 

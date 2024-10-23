@@ -15,9 +15,12 @@ function onTimeout() {
   console.log(promise);
 }
 
+const buf = new ArrayBuffer(101);
+console.log(buf);
+
 function* myGenerator() {}
 
-const target = { };
+const target = {};
 const handler = {
   get: (obj, prop) => `Intercepted ${prop}`
 };
