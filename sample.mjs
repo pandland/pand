@@ -21,7 +21,9 @@ function onTimeout() {
 }
 
 const buf = new ArrayBuffer(11);
-//console.log(buf);
+console.log(buf);
+console.log(new DataView(buf));
+
 
 function* myGenerator() {}
 
@@ -38,7 +40,7 @@ const proxy = new Proxy(target, handler);
 //console.log(NaN);
 //console.log(typedArr);
 //console.log(err);
-//console.log(promise);
+console.log(promise);
 //console.log(plainObj);
 //console.log(WebAssembly);
 //console.log(Hi);
