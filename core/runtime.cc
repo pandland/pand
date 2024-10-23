@@ -24,6 +24,9 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
                         v8::FunctionTemplate::New(isolate, Runtime::cwd));
   runtime_template->Set(isolate, "exit",
                         v8::FunctionTemplate::New(isolate, Runtime::exit));
+  runtime_template->Set(
+      isolate, "promiseState",
+      v8::FunctionTemplate::New(isolate, Runtime::promiseState));
   runtime_template->Set(isolate, "platform",
                         Pand::symbol(isolate, pd_get_platform()));
   runtime_template->Set(isolate, "version",
@@ -116,6 +119,34 @@ void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
 
   args.GetReturnValue().Set(exports);
+}
+
+// important function for inspecting Promise objects
+void Runtime::promiseState(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+
+  if (args.Length() < 1 || !args[0]->IsPromise()) {
+    args.GetReturnValue().Set(Pand::symbol(isolate, "unknown"));
+    return;
+  }
+
+  v8::Local<v8::Promise> promise = args[0].As<v8::Promise>();
+  v8::Promise::PromiseState state = promise->State();
+
+  switch (state) {
+  case v8::Promise::kPending:
+    args.GetReturnValue().Set(Pand::symbol(isolate, "pending"));
+    break;
+  case v8::Promise::kFulfilled:
+    args.GetReturnValue().Set(Pand::symbol(isolate, "resolved"));
+    break;
+  case v8::Promise::kRejected:
+    args.GetReturnValue().Set(Pand::symbol(isolate, "rejected"));
+    break;
+  default:
+    args.GetReturnValue().Set(Pand::symbol(isolate, "unknown"));
+  }
 }
 
 } // namespace pand::core

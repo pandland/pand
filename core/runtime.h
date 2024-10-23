@@ -16,7 +16,7 @@ public:
 
   static void getenv(const v8::FunctionCallbackInfo<v8::Value> &);
 
-  //static void setenv(const v8::FunctionCallbackInfo<v8::Value> &);
+  static void promiseState(const v8::FunctionCallbackInfo<v8::Value> &);
 
   static void exit(const v8::FunctionCallbackInfo<v8::Value> &);
 

@@ -13,7 +13,7 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   if (typeof value === 'undefined') return 'undefined';
   if (typeof value === 'boolean' || typeof value === 'number') return value.toString();
   if (typeof value === 'bigint') return value.toString() + 'n';
-  if (typeof value === 'string') return `'${value}'`;
+  if (typeof value === 'string') return JSON.stringify(value);  // it's better than nothing
   if (typeof value === 'symbol') return value.toString();
 
   if (typeof value === 'function') {
@@ -39,6 +39,10 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
 
   if (value instanceof Error) {
     return value.stack;
+  }
+
+  if (value instanceof Promise) {
+    return `Promise { <${Runtime.promiseState(value)}> }`;
   }
 
   if (ArrayBuffer.isView(value)) {
