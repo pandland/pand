@@ -1,5 +1,11 @@
 'use strict';
 
+const isPlainObject = obj => obj.constructor === Object && Object.getPrototypeOf(obj) === Object.prototype;
+
+function isConstructor(func) {
+  return typeof func === 'function' && !!func.prototype && func.prototype.constructor === func && func.toString().startsWith('class');
+}
+
 export function stringify(value, depth = 2, seen = new WeakSet()) {
   const nextDepth = depth - 1;
 
@@ -11,7 +17,8 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
   if (typeof value === 'symbol') return value.toString();
 
   if (typeof value === 'function') {
-    return `[Function ${value.name || '(anonymous)'}]`;
+    const typename = isConstructor(value) ? "Class" : "Function:";
+    return `[${typename} ${value.name || '(anonymous)'}]`;
   }
 
   if (value instanceof Date) {
@@ -47,14 +54,20 @@ export function stringify(value, depth = 2, seen = new WeakSet()) {
     if (seen.has(value)) return '[Circular]';
     seen.add(value);
 
-    const typeName = `[Object ${value.name ? `${ value.name}]` : "]"}`;
+    let str = "";
+    if (value.constructor && !isPlainObject(value)) {
+      str += `[${value.constructor.name || "Object"}] `
+    } else if (value[Symbol.toStringTag]) {
+      str += `Object [${value[Symbol.toStringTag]}] `;
+    }
+
     if (depth <= 0) {
-      return typeName;
+      return `[Object ${value.name ? `${ value.name}]` : "]"}`;
     }
     
     let keys = Object.keys(value);
     let keyValues = keys.map(key => `${key}: ${stringify(value[key], nextDepth, seen)}`);
-    return `${typeName} { ${keyValues.join(', ')} }`;
+    return str + `{ ${keyValues.join(', ')} }`;
   }
 
   return String(value);

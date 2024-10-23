@@ -43,3 +43,6 @@ deps/.cipd
 deps/depot_tools
 deps/.gclient*
 deps/.gcs_entries
+
+# some random js files where I test things (right now):
+ex.js
