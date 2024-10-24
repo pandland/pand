@@ -1,4 +1,5 @@
 import { inspectMany } from 'std:inspect';
+import { Buffer } from 'std:buffer';
 
 console.log = (...args) => { Runtime.print(inspectMany(args, {}) + "\n"); }
 console.error = (...args) => { Runtime.printerr(inspectMany(args, {}) + "\n"); }
@@ -9,6 +10,8 @@ globalThis.require = (module) => {
   }
   throw new Error('CommonJS modules are not supported.');
 }
+
+globalThis.Buffer = Buffer;
 
 const { Timer } = Runtime.bind("timer");
 

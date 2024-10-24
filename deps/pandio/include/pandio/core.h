@@ -16,8 +16,11 @@ typedef HMODULE pd_dlib_t;
 typedef CRITICAL_SECTION pd_mutex_t;
 typedef CONDITION_VARIABLE pd_cond_t;
 typedef HANDLE pd_thread_t;
+typedef INIT_ONCE pd_once_t;
 typedef DWORD pd_errno_t;   // system error type
 typedef DWORD pd_pid_t;
+
+#define PD_ONCE_INIT INIT_ONCE_STATIC_INIT
 
 #else
 #include <pthread.h>
@@ -29,9 +32,14 @@ typedef void* pd_dlib_t;
 typedef pthread_mutex_t pd_mutex_t;
 typedef pthread_cond_t pd_cond_t;
 typedef pthread_t pd_thread_t;
+typedef pthread_once_t pd_once_t;
 typedef int pd_errno_t;   // system error type
 typedef pid_t pd_pid_t;
+
+#define PD_ONCE_INIT PTHREAD_ONCE_INIT
 #endif
+
+int pd_random(void *, size_t);
 
 void pd_sleep(unsigned);
 
@@ -56,6 +64,9 @@ void pd_cond_destroy(pd_cond_t*);
 void pd_thread_create(pd_thread_t*, void* (*)(void*), void *);
 
 void pd_thread_join(pd_thread_t*);
+
+/* call specific function only once in multithreaded environment */
+int pd_once(pd_once_t*, void (*)(void));
 
 struct pd_notifier_s;
 

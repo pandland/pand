@@ -20,6 +20,7 @@
  */
 
 #include "pandio/core.h"
+#include "pandio/err.h"
 #include <process.h>
 
 
@@ -107,4 +108,17 @@ void pd_thread_create(pd_thread_t *thread, void* (func)(void*), void *arg) {
 
 void pd_thread_join(pd_thread_t *thread) {
     WaitForSingleObject(*thread, INFINITE);
+}
+
+BOOL pd__init_once(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context) {
+    void (*init_routine)(void) = Parameter;
+    init_routine();
+    return TRUE;
+}
+
+int pd_once(pd_once_t *once_control, void (*init_routine)(void)) {
+    if (InitOnceExecuteOnce(once_control, pd__init_once, init_routine, NULL))
+        return 0;
+
+    return pd_errno();
 }

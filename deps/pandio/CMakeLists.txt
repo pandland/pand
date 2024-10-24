@@ -16,6 +16,7 @@ set(SRC_FILES
         src/timers.c
         src/internal.c
         src/threadpool.c
+        src/random.c
         include/pandio/threadpool.h
         include/pandio/err.h
         src/dlib.c
@@ -31,6 +32,7 @@ if (WIN32)
 
     add_library(pandio STATIC ${SRC_FILES})
     target_compile_definitions(pandio PUBLIC WIN32_LEAN_AND_MEAN)
+    target_link_libraries(pandio PRIVATE advapi32)
 
 elseif (UNIX)
     if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

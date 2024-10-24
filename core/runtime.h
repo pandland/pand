@@ -20,6 +20,8 @@ public:
 
   static void exit(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void sleep(const v8::FunctionCallbackInfo<v8::Value> &);
+
   static void bind(const v8::FunctionCallbackInfo<v8::Value> &);
 
   static void isProxy(const v8::FunctionCallbackInfo<v8::Value> &);

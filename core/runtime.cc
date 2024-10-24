@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "buffer.h"
 #include "tcp.h"
 #include "tcp_server.h"
 #include "timer.h"
@@ -24,6 +25,8 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
                         v8::FunctionTemplate::New(isolate, Runtime::cwd));
   runtime_template->Set(isolate, "exit",
                         v8::FunctionTemplate::New(isolate, Runtime::exit));
+  runtime_template->Set(isolate, "sleep",
+                        v8::FunctionTemplate::New(isolate, Runtime::sleep));
   runtime_template->Set(
       isolate, "promiseState",
       v8::FunctionTemplate::New(isolate, Runtime::promiseState));
@@ -102,6 +105,23 @@ void Runtime::getenv(const v8::FunctionCallbackInfo<v8::Value> &args) {
   return args.GetReturnValue().Set(Pand::value(isolate, value));
 }
 
+void Runtime::sleep(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  int delay = 0;
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+
+  if (args.Length() < 1 || !args[0]->IsInt32()) {
+    delay = 0;
+  } else {
+    delay = args[0]
+                .As<v8::Number>()
+                ->Int32Value(isolate->GetCurrentContext())
+                .FromMaybe(0);
+  }
+
+  pd_sleep(delay);
+}
+
 void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
   assert(args.Length() == 1);
   assert(args[0]->IsString());
@@ -118,6 +138,8 @@ void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
   } else if (name == "tcp") {
     TcpStream::initialize(exports);
     TcpServer::initialize(exports);
+  } else if (name == "buffer") {
+    Buffer::initialize(exports);
   }
 
   args.GetReturnValue().Set(exports);
