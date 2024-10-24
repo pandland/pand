@@ -1,7 +1,7 @@
-import { format } from 'std:inspect';
+import { inspectMany } from 'std:inspect';
 
-console.log = (...args) => { Runtime.print(format(args, 3) + "\n"); }
-console.error = (...args) => { Runtime.printerr(format(args, 3) + "\n"); }
+console.log = (...args) => { Runtime.print(inspectMany(args, {}) + "\n"); }
+console.error = (...args) => { Runtime.printerr(inspectMany(args, {}) + "\n"); }
 
 globalThis.require = (module) => {
   if (typeof module === 'string') {
