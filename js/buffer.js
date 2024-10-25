@@ -1,4 +1,4 @@
-const { fillRandom, fromString, decode } = Runtime.bind("buffer");
+const { fillRandom, fromString, decode, memcmp } = Runtime.bind("buffer");
 
 export class Buffer extends Uint8Array {
   static random(size) {
@@ -44,16 +44,32 @@ export class Buffer extends Uint8Array {
     return final;
   }
 
+  static isBuffer(obj) {
+    return obj instanceof Buffer;
+  }
+
+  equals(other) {
+    if (!(other instanceof Uint8Array)) {
+      throw new Error("Other buffer must be a Buffer or Uint8Array");
+    }
+    // check only references (it is a same object)
+    if (this === other) return true;
+
+    if (this.length !== other.length) return false;
+
+    return memcmp(this, other) === 0;
+  }
+
   toString() {
     return decode(this.buffer);
   }
 
   toJSON() {
     if (this.length == 0) {
-      return { type: 'Buffer', data: [] };
+      return { type: "Buffer", data: [] };
     }
 
     const data = Array.from(this);
-    return { type: 'Buffer', data };
+    return { type: "Buffer", data };
   }
 }

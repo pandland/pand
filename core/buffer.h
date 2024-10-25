@@ -12,6 +12,8 @@ public:
   static void decode(const v8::FunctionCallbackInfo<v8::Value> &);
 
   static void fromString(const v8::FunctionCallbackInfo<v8::Value> &);
+
+  static void memcmp(const v8::FunctionCallbackInfo<v8::Value> &);
 };
 
 } // namespace pand::core
