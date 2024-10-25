@@ -1,5 +1,7 @@
 const { fillRandom, fromString, decode, memcmp } = Runtime.bind("buffer");
 
+const decoders = { 'utf8': 1, 'ascii': 2, 'base64': 3 };
+
 export class Buffer extends Uint8Array {
   static random(size) {
     const buffer = new Buffer(size);
@@ -89,8 +91,9 @@ export class Buffer extends Uint8Array {
     return memcmp(this.buffer, other.buffer) === 0;
   }
 
-  toString() {
-    return decode(this.buffer);
+  toString(encoding) {
+    const option = decoders[encoding] || decoders.utf8;
+    return decode(this.buffer, option);
   }
 
   toJSON() {

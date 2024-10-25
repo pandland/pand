@@ -3,8 +3,12 @@
 #include "pand.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <pandio.h>
+#include <simdutf.h>
+#include <sys/types.h>
+#include <v8-local-handle.h>
 
 namespace pand::core {
 
@@ -53,20 +57,49 @@ void Buffer::fromString(const v8::FunctionCallbackInfo<v8::Value> &args) {
   args.GetReturnValue().Set(buf);
 }
 
+enum DecodeOption { UTF8 = 1, ASCII = 2, BASE64 = 3 };
+
+v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes,
+                                   size_t len, int option) {
+  switch (option) {
+
+  case ASCII:
+    return v8::String::NewFromOneByte(
+        isolate, reinterpret_cast<const unsigned char *>(bytes),
+        v8::NewStringType::kNormal, len);
+  case UTF8:
+    return v8::String::NewFromUtf8(isolate, bytes, v8::NewStringType::kNormal,
+                                   len);
+  case BASE64:
+    size_t size = simdutf::base64_length_from_binary(len);
+    char *str = new char[size]; // idk how to pass ownership of these bytes to v8
+    simdutf::binary_to_base64(bytes, len, str);
+    auto result = v8::String::NewFromOneByte(
+        isolate, reinterpret_cast<const uint8_t *>(str),
+        v8::NewStringType::kNormal, size);
+    delete[] str;
+
+    return result;
+  }
+
+  return {};
+}
+
 // currenty only basic utf8 decoder
 void Buffer::decode(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
 
-  if (args.Length() < 1 || !args[0]->IsArrayBuffer()) {
-    Errors::throwTypeException(isolate, "Invalid buffer");
+  if (args.Length() < 2 || !args[0]->IsArrayBuffer() || !args[1]->IsNumber()) {
+    Errors::throwTypeException(isolate, "Invalid arguments");
     return;
   }
 
   v8::Local<v8::ArrayBuffer> buf = args[0].As<v8::ArrayBuffer>();
+  int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
   char *bytes = static_cast<char *>(buf->Data());
-  auto result = v8::String::NewFromUtf8(
-      isolate, bytes, v8::NewStringType::kNormal, buf->ByteLength());
+
+  v8::MaybeLocal<v8::String> result = decoder(isolate, bytes, buf->ByteLength(), option);
   if (result.IsEmpty()) {
     Errors::throwTypeException(isolate, "Unable to decode buffer");
     return;
