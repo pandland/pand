@@ -1,11 +1,7 @@
-const sample = Buffer.from("sample:");
-const result = Buffer.concat(sample, Buffer.from([65, 66, 66, 65]));
-
-console.log(result);
-console.log(result.toString());
-console.log(JSON.stringify(result));
-
-
-const buf1 = Buffer.from([65, 66, 66, 65]);
-const buf2 = Buffer.from("ABBA");
-console.log(buf1.equals(buf2));
+const u16 = new Uint16Array([0, 0xffff]);
+const buf = Buffer.copyBytesFrom(u16, 1, 1);
+u16[1] = 0;
+console.log(buf);
+console.log(buf.length); // 2
+console.log(buf[0]); // 255
+console.log(buf[1]); // 255 

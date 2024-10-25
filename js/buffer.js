@@ -44,6 +44,35 @@ export class Buffer extends Uint8Array {
     return final;
   }
 
+  static copyBytesFrom(view, offset, length) {
+    if (!ArrayBuffer.isView(view)) {
+      throw new TypeError("View must be a <TypedArray> instance");
+    }
+
+    let end;
+    if (length === undefined) {
+      end = view.length;
+      length = view.length;
+    }
+
+    if (offset === undefined || offset < 0) {
+      offset = 0;
+    }
+
+    if (offset >= view.length || length < 0) {
+      return new Buffer(0);
+    }
+
+    if (!end) {
+      end = offset + length;
+    }
+
+    const slice = view.slice(offset, end);
+    return Buffer.from(
+      new Uint8Array(slice.buffer, slice.byteOffset, slice.byteLength)
+    );
+  }
+
   static isBuffer(obj) {
     return obj instanceof Buffer;
   }
@@ -52,7 +81,7 @@ export class Buffer extends Uint8Array {
     if (!(other instanceof Uint8Array)) {
       throw new Error("Other buffer must be a Buffer or Uint8Array");
     }
-    // check only references (it is a same object)
+    // check only references (this is the same object)
     if (this === other) return true;
 
     if (this.length !== other.length) return false;
