@@ -26,26 +26,34 @@ export class Buffer extends Uint8Array {
    * @throws {Error}
    */
   static concat(...buffers) {
-    if (buffers.length === 0)
-      return new Buffer(0);
+    if (buffers.length === 0) return new Buffer(0);
 
-    const size = buffers.reduce((total, item) => total + item.length, 0);
+    const size = buffers.reduce((total, buffer) => total + buffer.length, 0);
     const final = new Buffer(size);
     let offset = 0;
 
-    buffers.forEach(item => {
-      if (item instanceof Uint8Array) {
-        final.set(item, offset);
-        offset += item.length;
+    for (const buffer of buffers) {
+      if (buffer instanceof Uint8Array) {
+        final.set(buffer, offset);
+        offset += buffer.length;
       } else {
         throw new Error("Expected Uint8Array instance");
       }
-    });
+    }
 
     return final;
   }
 
   toString() {
     return decode(this.buffer);
+  }
+
+  toJSON() {
+    if (this.length == 0) {
+      return { type: 'Buffer', data: [] };
+    }
+
+    const data = Array.from(this);
+    return { type: 'Buffer', data };
   }
 }
