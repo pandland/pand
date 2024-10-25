@@ -18,6 +18,7 @@ add_executable(pand
     core/runtime.cc
     core/timer.h
     core/timer.cc
+    core/utils/hex.h
     core/buffer.h
     core/buffer.cc
     core/tcp.h

@@ -2,13 +2,12 @@
 #include "errors.h"
 #include "pand.h"
 
+#include "utils/hex.h"
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <pandio.h>
 #include <simdutf.h>
-#include <sys/types.h>
-#include <v8-local-handle.h>
 
 namespace pand::core {
 
@@ -57,22 +56,35 @@ void Buffer::fromString(const v8::FunctionCallbackInfo<v8::Value> &args) {
   args.GetReturnValue().Set(buf);
 }
 
-enum DecodeOption { UTF8 = 1, ASCII = 2, BASE64 = 3 };
+enum DecodeOption { UTF8 = 1, ASCII = 2, BASE64 = 3, LATIN = 4, HEX = 5 };
 
 v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes,
                                    size_t len, int option) {
   switch (option) {
 
   case ASCII:
+  case LATIN:
     return v8::String::NewFromOneByte(
         isolate, reinterpret_cast<const unsigned char *>(bytes),
         v8::NewStringType::kNormal, len);
   case UTF8:
     return v8::String::NewFromUtf8(isolate, bytes, v8::NewStringType::kNormal,
                                    len);
-  case BASE64:
+  case HEX: {
+    size_t size = hex::hex_length_from_binary(len);
+    char *str = new char[size];  // idk how to pass ownership of these bytes to v8
+    hex::binary_to_hex(bytes, len, str);
+    auto result = v8::String::NewFromOneByte(
+        isolate, reinterpret_cast<const uint8_t *>(str),
+        v8::NewStringType::kNormal, size);
+    delete[] str; 
+
+    return result;
+  }
+  case BASE64: {
     size_t size = simdutf::base64_length_from_binary(len);
-    char *str = new char[size]; // idk how to pass ownership of these bytes to v8
+    char *str =
+        new char[size];
     simdutf::binary_to_base64(bytes, len, str);
     auto result = v8::String::NewFromOneByte(
         isolate, reinterpret_cast<const uint8_t *>(str),
@@ -80,6 +92,7 @@ v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes,
     delete[] str;
 
     return result;
+  }
   }
 
   return {};
@@ -99,7 +112,8 @@ void Buffer::decode(const v8::FunctionCallbackInfo<v8::Value> &args) {
   int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
   char *bytes = static_cast<char *>(buf->Data());
 
-  v8::MaybeLocal<v8::String> result = decoder(isolate, bytes, buf->ByteLength(), option);
+  v8::MaybeLocal<v8::String> result =
+      decoder(isolate, bytes, buf->ByteLength(), option);
   if (result.IsEmpty()) {
     Errors::throwTypeException(isolate, "Unable to decode buffer");
     return;

@@ -1,6 +1,6 @@
 const { fillRandom, fromString, decode, memcmp } = Runtime.bind("buffer");
 
-const decoders = { 'utf8': 1, 'ascii': 2, 'base64': 3 };
+const decoders = { utf8: 1, "utf-8": 1, ascii: 2, base64: 3, latin: 4, hex: 5 };
 
 export class Buffer extends Uint8Array {
   static random(size) {
@@ -77,6 +77,12 @@ export class Buffer extends Uint8Array {
 
   static isBuffer(obj) {
     return obj instanceof Buffer;
+  }
+
+  static isEncoding(encoding) {
+    if (encoding && decoders[encoding]) return true;
+
+    return false;
   }
 
   equals(other) {
