@@ -1,6 +1,14 @@
 const { fillRandom, fromString, decode, memcmp } = Runtime.bind("buffer");
 
-const decoders = { utf8: 1, "utf-8": 1, ascii: 2, base64: 3, latin: 4, hex: 5 };
+const decoders = {
+  utf8: 1,
+  "utf-8": 1,
+  ascii: 2,
+  base64: 3,
+  latin: 4,
+  hex: 5,
+  base64url: 6,
+};
 
 export class Buffer extends Uint8Array {
   static random(size) {

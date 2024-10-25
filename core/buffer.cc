@@ -56,7 +56,14 @@ void Buffer::fromString(const v8::FunctionCallbackInfo<v8::Value> &args) {
   args.GetReturnValue().Set(buf);
 }
 
-enum DecodeOption { UTF8 = 1, ASCII = 2, BASE64 = 3, LATIN = 4, HEX = 5 };
+enum DecodeOption {
+  UTF8 = 1,
+  ASCII = 2,
+  BASE64 = 3,
+  LATIN = 4,
+  HEX = 5,
+  BASE64URL = 6
+};
 
 v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes,
                                    size_t len, int option) {
@@ -72,20 +79,31 @@ v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes,
                                    len);
   case HEX: {
     size_t size = hex::hex_length_from_binary(len);
-    char *str = new char[size];  // idk how to pass ownership of these bytes to v8
+    char *str =
+        new char[size]; // idk how to pass ownership of these bytes to v8
     hex::binary_to_hex(bytes, len, str);
     auto result = v8::String::NewFromOneByte(
         isolate, reinterpret_cast<const uint8_t *>(str),
         v8::NewStringType::kNormal, size);
-    delete[] str; 
+    delete[] str;
 
     return result;
   }
   case BASE64: {
     size_t size = simdutf::base64_length_from_binary(len);
-    char *str =
-        new char[size];
+    char *str = new char[size];
     simdutf::binary_to_base64(bytes, len, str);
+    auto result = v8::String::NewFromOneByte(
+        isolate, reinterpret_cast<const uint8_t *>(str),
+        v8::NewStringType::kNormal, size);
+    delete[] str;
+
+    return result;
+  }
+  case BASE64URL: {
+    size_t size = simdutf::base64_length_from_binary(len, simdutf::base64_url);
+    char *str = new char[size];
+    simdutf::binary_to_base64(bytes, len, str, simdutf::base64_url);
     auto result = v8::String::NewFromOneByte(
         isolate, reinterpret_cast<const uint8_t *>(str),
         v8::NewStringType::kNormal, size);
