@@ -2,7 +2,6 @@
 #include "errors.h"
 #include "pand.h"
 
-#include <cstdio>
 #include <pandio.h>
 
 namespace pand::core {
@@ -16,6 +15,57 @@ void Buffer::initialize(v8::Local<v8::Object> exports) {
       ->Set(context, Pand::symbol(isolate, "fillRandom"),
             Pand::func(context, Buffer::fillRandom))
       .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "decode"),
+            Pand::func(context, Buffer::decode))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "fromString"),
+            Pand::func(context, Buffer::fromString))
+      .ToChecked();
+}
+
+void Buffer::fromString(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+
+  if (args.Length() < 1 || !args[0]->IsString()) {
+    Errors::throwTypeException(isolate, "Invalid String");
+    return;
+  }
+
+  v8::Local<v8::String> str = args[0].As<v8::String>();
+  size_t len = str->Utf8Length(isolate);
+
+  v8::Local<v8::ArrayBuffer> buf = v8::ArrayBuffer::New(isolate, len);
+  char *bytes = static_cast<char *>(buf->Data());
+  str->WriteUtf8(isolate, bytes);
+
+  args.GetReturnValue().Set(buf);
+}
+
+// currenty only basic utf8 decoder
+void Buffer::decode(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+
+  if (args.Length() < 1 || !args[0]->IsArrayBuffer()) {
+    Errors::throwTypeException(isolate, "Invalid buffer");
+    return;
+  }
+
+  v8::Local<v8::ArrayBuffer> buf = args[0].As<v8::ArrayBuffer>();
+  char *bytes = static_cast<char *>(buf->Data());
+  auto result = v8::String::NewFromUtf8(
+      isolate, bytes, v8::NewStringType::kNormal, buf->ByteLength());
+  if (result.IsEmpty()) {
+    Errors::throwTypeException(isolate, "Unable to decode buffer");
+    return;
+  }
+
+  args.GetReturnValue().Set(result.ToLocalChecked());
 }
 
 // sync function
