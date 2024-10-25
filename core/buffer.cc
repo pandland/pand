@@ -105,7 +105,7 @@ void Buffer::memcmp(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
 
   v8::Local<v8::ArrayBuffer> buf1 = args[0].As<v8::ArrayBuffer>();
-  v8::Local<v8::ArrayBuffer> buf2 = args[0].As<v8::ArrayBuffer>();
+  v8::Local<v8::ArrayBuffer> buf2 = args[1].As<v8::ArrayBuffer>();
 
   size_t n = std::min(buf1->ByteLength(), buf2->ByteLength());
   int result = std::memcmp(buf1->Data(), buf2->Data(), n);

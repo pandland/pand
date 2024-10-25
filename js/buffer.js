@@ -57,7 +57,7 @@ export class Buffer extends Uint8Array {
 
     if (this.length !== other.length) return false;
 
-    return memcmp(this, other) === 0;
+    return memcmp(this.buffer, other.buffer) === 0;
   }
 
   toString() {
