@@ -2,8 +2,6 @@
 #include "errors.h"
 #include "pand.h"
 
-#include "bytes/extern.h"
-#include "bytes/hex.h"
 #include <algorithm>
 #include <cstring>
 #include <pandio.h>
@@ -22,33 +20,9 @@ void Buffer::initialize(v8::Local<v8::Object> exports) {
       .ToChecked();
 
   exports
-      ->Set(context, Pand::symbol(isolate, "fromString"),
-            Pand::func(context, Buffer::fromString))
-      .ToChecked();
-
-  exports
       ->Set(context, Pand::symbol(isolate, "memcmp"),
             Pand::func(context, Buffer::memcmp))
       .ToChecked();
-}
-
-void Buffer::fromString(const v8::FunctionCallbackInfo<v8::Value> &args) {
-  v8::Isolate *isolate = args.GetIsolate();
-  v8::HandleScope handle_scope(isolate);
-
-  if (args.Length() < 1 || !args[0]->IsString()) {
-    Errors::throwTypeException(isolate, "Invalid String");
-    return;
-  }
-
-  v8::Local<v8::String> str = args[0].As<v8::String>();
-  size_t len = str->Utf8Length(isolate);
-
-  v8::Local<v8::ArrayBuffer> buf = v8::ArrayBuffer::New(isolate, len);
-  char *bytes = static_cast<char *>(buf->Data());
-  str->WriteUtf8(isolate, bytes);
-
-  args.GetReturnValue().Set(buf);
 }
 
 // sync function

@@ -1,4 +1,4 @@
-const { fillRandom, fromString, memcmp } = Runtime.bind("buffer");
+const { fillRandom, memcmp } = Runtime.bind("buffer");
 const transcoder = Runtime.bind("transcoder");
 
 const encoders = {
@@ -22,7 +22,8 @@ export class Buffer extends Uint8Array {
   static from(...args) {
     const value = args[0];
     if (value && typeof value === "string") {
-      const inner = fromString(value);
+      const option = encoders[args[1]] || encoders.utf8;
+      const inner = transcoder.encode(value, option);
       return new Buffer(inner);
     }
 

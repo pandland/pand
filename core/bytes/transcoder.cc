@@ -70,10 +70,86 @@ v8::MaybeLocal<v8::String> Transcoder::decoder(v8::Isolate *isolate,
   return {};
 }
 
-void Transcoder::encode(const v8::FunctionCallbackInfo<v8::Value> &args) {}
+void Transcoder::encode(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-void Transcoder::encoder(v8::Isolate *isolate, const char *bytes, size_t len,
-                         int option) {}
+  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsNumber()) {
+    Errors::throwTypeException(isolate, "Invalid arguments");
+    return;
+  }
+
+  int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
+  v8::Local<v8::String> str = args[0].As<v8::String>();
+
+  auto result = Transcoder::encoder(isolate, str, option);
+  if (result.IsEmpty()) {
+    Errors::throwTypeException(isolate, "Unable to encode string");
+    return;
+  }
+
+  args.GetReturnValue().Set(result.ToLocalChecked());
+}
+
+v8::MaybeLocal<v8::ArrayBuffer> Transcoder::encoder(v8::Isolate *isolate,
+                                                    v8::Local<v8::String> str,
+                                                    int option) {
+  switch (option) {
+  case UTF8: {
+    size_t len = str->Utf8Length(isolate);
+    v8::Local<v8::ArrayBuffer> buf = v8::ArrayBuffer::New(isolate, len);
+    char *bytes = static_cast<char *>(buf->Data());
+    str->WriteUtf8(isolate, bytes);
+
+    return buf;
+  }
+  case HEX: {
+    size_t len = bytes::binary_length_from_hex(str->Utf8Length(isolate));
+    v8::Local<v8::ArrayBuffer> buf = v8::ArrayBuffer::New(isolate, len);
+    v8::String::ValueView view(isolate, str);
+    if (bytes::hex_to_binary(reinterpret_cast<const char *>(view.data8()),
+                             view.length(), static_cast<char *>(buf->Data()))) {
+      return buf;
+    }
+    break;
+  }
+  case BASE64: {
+    v8::String::Value input(isolate, str);
+    size_t len = simdutf::maximal_binary_length_from_base64(
+        reinterpret_cast<const char16_t *>(*input), input.length());
+    v8::Local<v8::ArrayBuffer> buf = v8::ArrayBuffer::New(isolate, len);
+
+    auto result = simdutf::base64_to_binary(
+        reinterpret_cast<const char16_t *>(*input), input.length(),
+        static_cast<char *>(buf->Data()));
+
+    if (result.error != simdutf::error_code::SUCCESS) {
+      break;
+    }
+
+    return buf;
+  }
+  case BASE64URL: {
+    v8::String::Value input(isolate, str);
+    size_t len = simdutf::maximal_binary_length_from_base64(
+        reinterpret_cast<const char16_t *>(*input), input.length());
+    v8::Local<v8::ArrayBuffer> buf = v8::ArrayBuffer::New(isolate, len);
+
+    auto result = simdutf::base64_to_binary(
+        reinterpret_cast<const char16_t *>(*input), input.length(),
+        static_cast<char *>(buf->Data()), simdutf::base64_url);
+
+    if (result.error != simdutf::error_code::SUCCESS) {
+      break;
+    }
+
+    return buf;
+  }
+  }
+
+  return {};
+}
 
 void Transcoder::initialize(v8::Local<v8::Object> exports) {
   Pand *pand = Pand::get();
@@ -114,6 +190,11 @@ void Transcoder::initialize(v8::Local<v8::Object> exports) {
   exports
       ->Set(context, Pand::symbol(isolate, "decode"),
             Pand::func(context, Transcoder::decode))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "encode"),
+            Pand::func(context, Transcoder::encode))
       .ToChecked();
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <v8-array-buffer.h>
 #include <v8.h>
 
 #include "bytes/extern.h"
@@ -32,11 +33,11 @@ public:
 
   static void encode(const v8::FunctionCallbackInfo<v8::Value> &);
 
-  static v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes, size_t len,
-                      int option);
+  static v8::MaybeLocal<v8::String>
+  decoder(v8::Isolate *isolate, const char *bytes, size_t len, int option);
 
-  static void encoder(v8::Isolate *isolate, const char *bytes, size_t len,
-                      int option);
+  static v8::MaybeLocal<v8::ArrayBuffer>
+  encoder(v8::Isolate *isolate, v8::Local<v8::String>, int option);
 };
 
 } // namespace pand::core

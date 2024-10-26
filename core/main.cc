@@ -1,5 +1,6 @@
 #include "errors.h"
 #include "pand.h"
+#include <cstdlib>
 #include <iostream>
 
 using namespace pand::core;
@@ -13,7 +14,7 @@ int main(int argc, char **argv) {
     std::cout << "GitHub: " << "https://github.com/pandland/pand\n";
     std::cout << "\nTo execute script run:\n\n"
               << "  pand [ script.js ] [arguments]\n\n";
-    return 0;
+    return EXIT_SUCCESS;
   }
 
   Pand *pand = Pand::get();
@@ -21,17 +22,17 @@ int main(int argc, char **argv) {
     const char *entryfile = argv[1];
     pand->run(entryfile, argc, argv);
   } catch (const CriticalException &err) {
-    return 1;
+    return EXIT_FAILURE;
   } catch (const std::bad_alloc &err) {
     // this exception is likely to happen for some users.
     Errors::printError("Bad alloc");
   } catch (const std::exception &err) {
     Errors::printError(err.what());
-    return 1;
+    return EXIT_FAILURE;
   } catch (...) {
     Errors::printError("Unknown critical error");
-    return 1;
+    return EXIT_FAILURE;
   }
 
-  return 0;
+  return EXIT_SUCCESS;
 }
