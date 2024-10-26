@@ -1,13 +1,14 @@
-const { fillRandom, fromString, decode, memcmp } = Runtime.bind("buffer");
+const { fillRandom, fromString, memcmp } = Runtime.bind("buffer");
+const transcoder = Runtime.bind("transcoder");
 
-const decoders = {
-  utf8: 1,
-  "utf-8": 1,
-  ascii: 2,
-  base64: 3,
-  latin: 4,
-  hex: 5,
-  base64url: 6,
+const encoders = {
+  utf8: transcoder.UTF8,
+  "utf-8": transcoder.UTF8,
+  ascii: transcoder.ASCII,
+  base64: transcoder.BASE64,
+  base64url: transcoder.BASE64URL,
+  latin: transcoder.LATIN,
+  hex: transcoder.HEX,
 };
 
 export class Buffer extends Uint8Array {
@@ -88,7 +89,7 @@ export class Buffer extends Uint8Array {
   }
 
   static isEncoding(encoding) {
-    if (encoding && decoders[encoding]) return true;
+    if (encoding && encoders[encoding]) return true;
 
     return false;
   }
@@ -106,8 +107,8 @@ export class Buffer extends Uint8Array {
   }
 
   toString(encoding) {
-    const option = decoders[encoding] || decoders.utf8;
-    return decode(this.buffer, option);
+    const option = encoders[encoding] || encoders.utf8;
+    return transcoder.decode(this.buffer, option);
   }
 
   toJSON() {

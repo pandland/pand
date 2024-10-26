@@ -3,6 +3,7 @@
 #include "tcp.h"
 #include "tcp_server.h"
 #include "timer.h"
+#include <bytes/transcoder.h>
 #include <filesystem>
 #include <iostream>
 #include <pandio.h>
@@ -140,6 +141,8 @@ void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
     TcpServer::initialize(exports);
   } else if (name == "buffer") {
     Buffer::initialize(exports);
+  } else if (name == "transcoder") {
+    Transcoder::initialize(exports);
   }
 
   args.GetReturnValue().Set(exports);

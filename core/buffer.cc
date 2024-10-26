@@ -2,9 +2,9 @@
 #include "errors.h"
 #include "pand.h"
 
-#include "utils/hex.h"
+#include "bytes/extern.h"
+#include "bytes/hex.h"
 #include <algorithm>
-#include <cstdint>
 #include <cstring>
 #include <pandio.h>
 #include <simdutf.h>
@@ -19,11 +19,6 @@ void Buffer::initialize(v8::Local<v8::Object> exports) {
   exports
       ->Set(context, Pand::symbol(isolate, "fillRandom"),
             Pand::func(context, Buffer::fillRandom))
-      .ToChecked();
-
-  exports
-      ->Set(context, Pand::symbol(isolate, "decode"),
-            Pand::func(context, Buffer::decode))
       .ToChecked();
 
   exports
@@ -54,90 +49,6 @@ void Buffer::fromString(const v8::FunctionCallbackInfo<v8::Value> &args) {
   str->WriteUtf8(isolate, bytes);
 
   args.GetReturnValue().Set(buf);
-}
-
-enum DecodeOption {
-  UTF8 = 1,
-  ASCII = 2,
-  BASE64 = 3,
-  LATIN = 4,
-  HEX = 5,
-  BASE64URL = 6
-};
-
-v8::MaybeLocal<v8::String> decoder(v8::Isolate *isolate, const char *bytes,
-                                   size_t len, int option) {
-  switch (option) {
-
-  case ASCII:
-  case LATIN:
-    return v8::String::NewFromOneByte(
-        isolate, reinterpret_cast<const unsigned char *>(bytes),
-        v8::NewStringType::kNormal, len);
-  case UTF8:
-    return v8::String::NewFromUtf8(isolate, bytes, v8::NewStringType::kNormal,
-                                   len);
-  case HEX: {
-    size_t size = hex::hex_length_from_binary(len);
-    char *str =
-        new char[size]; // idk how to pass ownership of these bytes to v8
-    hex::binary_to_hex(bytes, len, str);
-    auto result = v8::String::NewFromOneByte(
-        isolate, reinterpret_cast<const uint8_t *>(str),
-        v8::NewStringType::kNormal, size);
-    delete[] str;
-
-    return result;
-  }
-  case BASE64: {
-    size_t size = simdutf::base64_length_from_binary(len);
-    char *str = new char[size];
-    simdutf::binary_to_base64(bytes, len, str);
-    auto result = v8::String::NewFromOneByte(
-        isolate, reinterpret_cast<const uint8_t *>(str),
-        v8::NewStringType::kNormal, size);
-    delete[] str;
-
-    return result;
-  }
-  case BASE64URL: {
-    size_t size = simdutf::base64_length_from_binary(len, simdutf::base64_url);
-    char *str = new char[size];
-    simdutf::binary_to_base64(bytes, len, str, simdutf::base64_url);
-    auto result = v8::String::NewFromOneByte(
-        isolate, reinterpret_cast<const uint8_t *>(str),
-        v8::NewStringType::kNormal, size);
-    delete[] str;
-
-    return result;
-  }
-  }
-
-  return {};
-}
-
-// currenty only basic utf8 decoder
-void Buffer::decode(const v8::FunctionCallbackInfo<v8::Value> &args) {
-  v8::Isolate *isolate = args.GetIsolate();
-  v8::HandleScope handle_scope(isolate);
-
-  if (args.Length() < 2 || !args[0]->IsArrayBuffer() || !args[1]->IsNumber()) {
-    Errors::throwTypeException(isolate, "Invalid arguments");
-    return;
-  }
-
-  v8::Local<v8::ArrayBuffer> buf = args[0].As<v8::ArrayBuffer>();
-  int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
-  char *bytes = static_cast<char *>(buf->Data());
-
-  v8::MaybeLocal<v8::String> result =
-      decoder(isolate, bytes, buf->ByteLength(), option);
-  if (result.IsEmpty()) {
-    Errors::throwTypeException(isolate, "Unable to decode buffer");
-    return;
-  }
-
-  args.GetReturnValue().Set(result.ToLocalChecked());
 }
 
 // sync function

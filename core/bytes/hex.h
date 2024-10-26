@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace hex {
+namespace pand::bytes {
 
 static char signs[] = {
     '0', '1', '2', '3', '4', '5', '6', '7',
@@ -38,7 +38,6 @@ static char byte_map[] = {
 
 inline size_t binary_length_from_hex(size_t length) { return length / 2; }
 
-// not tested btw:
 static bool hex_to_binary(const char *input, size_t size, char *output) {
   if (size % 2 != 0) {
     return false;
@@ -61,4 +60,4 @@ static bool hex_to_binary(const char *input, size_t size, char *output) {
   return true;
 }
 
-} // namespace hex
+} // namespace pand::bytes

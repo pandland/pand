@@ -18,7 +18,10 @@ add_executable(pand
     core/runtime.cc
     core/timer.h
     core/timer.cc
-    core/utils/hex.h
+    core/bytes/extern.h
+    core/bytes/hex.h
+    core/bytes/transcoder.h
+    core/bytes/transcoder.cc
     core/buffer.h
     core/buffer.cc
     core/tcp.h
@@ -30,7 +33,10 @@ add_executable(pand
 
 target_include_directories(pand SYSTEM
     PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/include
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/core
+    )
 
 # Our cmake deps
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/pandio pandio_build)

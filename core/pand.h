@@ -3,6 +3,8 @@
 #include <libplatform/libplatform.h>
 #include <pandio.h>
 #include <string>
+#include <v8-isolate.h>
+#include <v8-primitive.h>
 #include <v8.h>
 
 namespace pand::core {
@@ -56,12 +58,17 @@ public:
     return v8::Number::New(isolate, number);
   }
 
-    static inline v8::Local<v8::Boolean> boolean(v8::Isolate *isolate,
-                                            bool boolean) {
+  static inline v8::Local<v8::Boolean> boolean(v8::Isolate *isolate,
+                                               bool boolean) {
     return v8::Boolean::New(isolate, boolean);
   }
 
-  static inline v8::Local<v8::Function> func(v8::Local<v8::Context> context, v8::FunctionCallback callback) {
+  static inline v8::Local<v8::Number> integer(v8::Isolate *isolate, int32_t value) {
+    return v8::Integer::New(isolate, value);
+  }
+
+  static inline v8::Local<v8::Function> func(v8::Local<v8::Context> context,
+                                             v8::FunctionCallback callback) {
     return v8::Function::New(context, callback).ToLocalChecked();
   }
 
