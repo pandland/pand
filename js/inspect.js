@@ -195,7 +195,7 @@ function formatArray(arr, depth, ctx) {
   if (hasMore) {
     const remaining = arr.length - len;
     output.push(`<${remaining + empty} more items>`);
-  } else {
+  } else if (empty) {
     output.push(`<${empty} empty items>`);
   }
 
