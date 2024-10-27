@@ -3,8 +3,6 @@
 #include <buffer.h>
 #include <errors.h>
 #include <memory>
-#include <v8-array-buffer.h>
-#include <v8-typed-array.h>
 #include <writer.h>
 
 namespace pand::core {
@@ -209,10 +207,9 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(isolate, std::move(stream->read_bs));
-  stream->read_bs = nullptr;
-  v8::Local<v8::Value> argv = {ab};
+  v8::Local<v8::Value> argv[2] = {ab, Pand::integer(isolate, size)};
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
-  Pand::makeCallback(obj, isolate, "onData", &argv, 1);
+  Pand::makeCallback(obj, isolate, "onData", argv, 2);
 }
 
 void TcpStream::onClose(pd_tcp_t *handle) {

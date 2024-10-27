@@ -1,22 +1,21 @@
-const { TcpStream } = Runtime.bind('tcp');
+import { Socket } from 'std:net';
 
-const client = new TcpStream();
+const socket = new Socket();
+await socket.connect('127.0.0.1', 8000);
 
-client.onData = (chunk) => {
-  console.log(new Buffer(chunk).toString());
-  client.write(Buffer.from('Michał').buffer);
-} 
-
-client.onConnect = () => {
-  console.log("Connected");
+socket.onclose = () => {
+  console.log(`Connection is destroyed? ${socket.destroyed}`);
 }
 
-client.onClose = () => {
-  console.log('Connection closed');
+socket.write("Hello World\n");
+socket.write(Buffer.from([63, 64, 64, 63]));
+
+socket.ondata = (chunk) => {
+  console.log(chunk);
 }
 
-client.onError = (err) => {
-  throw err;
-}
+const message = await socket.read();
+console.log(message.toString());
 
-client.connect('127.0.0.1', 8000);
+console.log(socket.destroyed);
+socket.shutdown();
