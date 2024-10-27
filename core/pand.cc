@@ -1,6 +1,5 @@
 #include "pand.h"
 #include <cstdio>
-#include <iostream>
 #include <pandio.h>
 #include <string_view>
 #include <v8.h>

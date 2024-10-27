@@ -112,7 +112,7 @@ export class Socket {
       throw new TypeError('Write buffer must be a string, <Uint8Array> or <Buffer>');
     }
 
-    this.#handle.write(buf.buffer); // accepts ArrayBuffer actually
+    this.#handle.write(buf);
   }
 
   connect(dest, port) {

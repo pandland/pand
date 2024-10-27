@@ -12,10 +12,12 @@ socket.write(Buffer.from([63, 64, 64, 63]));
 
 socket.ondata = (chunk) => {
   console.log(chunk);
+  socket.write(chunk);
 }
 
 const message = await socket.read();
-console.log(message.toString());
+const str = message.toString();
+console.log(`${str}: ${str.length}`);
 
 console.log(socket.destroyed);
 socket.shutdown();

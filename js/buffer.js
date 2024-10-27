@@ -150,7 +150,7 @@ export class Buffer extends Uint8Array {
 
   toString(encoding) {
     const option = encoders[encoding] || encoders.utf8;
-    return transcoder.decode(this.buffer, option);
+    return transcoder.decode(this, option);
   }
 
   toJSON() {

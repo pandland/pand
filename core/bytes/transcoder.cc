@@ -8,17 +8,19 @@ void Transcoder::decode(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
 
-  if (args.Length() < 2 || !args[0]->IsArrayBuffer() || !args[1]->IsNumber()) {
+  if (args.Length() < 2 || !Buffer::isBuffer(args[0]) || !args[1]->IsNumber()) {
     Errors::throwTypeException(isolate, "Invalid arguments");
     return;
   }
 
-  v8::Local<v8::ArrayBuffer> buf = args[0].As<v8::ArrayBuffer>();
-  int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
-  char *bytes = static_cast<char *>(buf->Data());
+  auto buf = args[0].As<v8::Uint8Array>();
+  char *bytes = static_cast<char *>(buf->Buffer()->Data());
+  size_t size = buf->ByteLength();
 
+  int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
+  auto ui = args[0].As<v8::Uint8Array>();
   v8::MaybeLocal<v8::String> result =
-      decoder(isolate, bytes, buf->ByteLength(), option);
+      decoder(isolate, bytes, size, option);
   if (result.IsEmpty()) {
     Errors::throwTypeException(isolate, "Unable to decode buffer");
     return;

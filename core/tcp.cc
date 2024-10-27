@@ -3,6 +3,7 @@
 #include <buffer.h>
 #include <errors.h>
 #include <memory>
+#include <v8-typed-array.h>
 #include <writer.h>
 
 namespace pand::core {
@@ -161,14 +162,16 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   if (!stream)
     return;
 
-  if (args.Length() < 1 || !args[0]->IsArrayBuffer()) {
-    Errors::throwTypeException(isolate, "Expected <ArrayBuffer>");
+  if (args.Length() < 1 || !Buffer::isBuffer(args[0])) {
+    Errors::throwTypeException(isolate, "Expected <Buffer> or <Uint8Array>");
   }
   
-  auto ab = args[0].As<v8::ArrayBuffer>();
+  auto ui = args[0].As<v8::Uint8Array>();
+  auto ab = ui->Buffer();
+  size_t offset = ui->ByteOffset();
   char *payload = static_cast<char*>(ab->Data());
-  Writer *writer = new Writer(payload, ab->ByteLength());
-  writer->setBuffer(isolate,  ab);
+  Writer *writer = new Writer(payload + offset, ui->ByteLength());
+  writer->setArrayBuffer(isolate, ab);
   pd_tcp_write(&stream->handle, &writer->op);
 }
 

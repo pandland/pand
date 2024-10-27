@@ -1,7 +1,7 @@
 #pragma once
-#include <v8-array-buffer.h>
 #include <v8.h>
 
+#include "buffer.h"
 #include "bytes/extern.h"
 #include "bytes/hex.h"
 #include <simdutf.h>

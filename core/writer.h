@@ -16,7 +16,7 @@ struct Writer {
 
   ~Writer() { value.Reset(); }
 
-  void setBuffer(v8::Isolate *isolate, v8::Local<v8::ArrayBuffer> ab) {
+  void setArrayBuffer(v8::Isolate *isolate, v8::Local<v8::ArrayBuffer> ab) {
     value.Reset(isolate, ab);
   }
 
