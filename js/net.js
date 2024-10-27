@@ -1,14 +1,27 @@
-const { TcpStream } = Runtime.bind('tcp');
+const { TcpStream, TcpServer } = Runtime.bind('tcp');
 
 const kEmpty = 0;
 const kConnecting = 1;
 const kActive = 2;
 const kDestroyed = 3;
+const kListening = 4;
 
 export class Socket {
   #handle = null;
   #queue = [];
   #state = kEmpty;
+
+  onerror = null;
+  ondata = null;
+  onclose = null;
+
+  __init(handle) {
+    this.#handle = handle;
+    this.#state = kActive;
+    this.#handle.onError = this.#onError.bind(this);
+    this.#handle.onData = this.#onData.bind(this);
+    this.#handle.onClose = this.#onClose.bind(this);
+  }
 
   get connecting() {
     return this.#state === kConnecting;
@@ -127,13 +140,11 @@ export class Socket {
     this.#state = kConnecting;
     const handle = new TcpStream();
     this.#handle = handle;
-    handle.onClose = this.#onClose.bind(this);
+    handle.onClose = () => {};
     handle.connect(dest, port);
     return new Promise((resolve, reject) => {
       handle.onConnect = () => {
-        this.#state = kActive;
-        this.#handle.onError = this.#onError.bind(this);
-        this.#handle.onData = this.#onData.bind(this);
+        this.__init(handle);
         this.#handle.onConnect = null;
         resolve();
       };
@@ -155,3 +166,47 @@ export class Socket {
   }
 }
 
+export class Server {
+  #state = kEmpty;
+  #handle = null;
+
+  port = null;
+  onconnection = null;
+
+  get listening() {
+    return this.#state === kListening;
+  }
+
+  #handleConnection(handle) {
+    const socket = new Socket();
+    socket.__init(handle);
+
+    if (this.onconnection) {
+      this.onconnection(socket);
+    } else {
+      socket.destroy();
+    }
+  }
+
+  listen(port) {
+    if (!port || !Number.isInteger(port)) {
+      throw new Error("Port must be an integer");
+    }
+
+    if (this.#handle) {
+      throw new Error("This server is already listening");
+    }
+
+    const handle = new TcpServer();
+    handle.onConnection = this.#handleConnection.bind(this);
+    handle.listen(port);
+    this.#state = kListening;
+    this.port = port;
+  }
+
+  close() {
+    this.#handle.close();
+    this.#handle = null;
+    this.#state = kDestroyed;
+  }
+}
