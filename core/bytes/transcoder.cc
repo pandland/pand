@@ -14,11 +14,10 @@ void Transcoder::decode(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
 
   auto buf = args[0].As<v8::Uint8Array>();
-  char *bytes = static_cast<char *>(buf->Buffer()->Data());
-  size_t size = buf->ByteLength();
+  char *bytes = Buffer::getBytes(buf);
+  size_t size = Buffer::getSize(buf);
 
   int option = args[1]->Int32Value(isolate->GetCurrentContext()).ToChecked();
-  auto ui = args[0].As<v8::Uint8Array>();
   v8::MaybeLocal<v8::String> result =
       decoder(isolate, bytes, size, option);
   if (result.IsEmpty()) {

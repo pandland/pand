@@ -3,7 +3,6 @@
 #include <buffer.h>
 #include <errors.h>
 #include <memory>
-#include <v8-typed-array.h>
 #include <writer.h>
 
 namespace pand::core {
@@ -167,11 +166,10 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
   
   auto ui = args[0].As<v8::Uint8Array>();
-  auto ab = ui->Buffer();
-  size_t offset = ui->ByteOffset();
-  char *payload = static_cast<char*>(ab->Data());
-  Writer *writer = new Writer(payload + offset, ui->ByteLength());
-  writer->setArrayBuffer(isolate, ab);
+  char *data = Buffer::getBytes(ui);
+  size_t size = Buffer::getSize(ui);
+  Writer *writer = new Writer(data, size);
+  writer->setBufferView(isolate, ui);
   pd_tcp_write(&stream->handle, &writer->op);
 }
 
