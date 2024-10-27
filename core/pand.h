@@ -72,6 +72,10 @@ public:
     return v8::Function::New(context, callback).ToLocalChecked();
   }
 
+  static void CFreeDeleter(void *data, size_t length, void *deleter_data) {
+    free(data);
+  }
+
   void setTcpStreamConstructor(v8::Local<v8::Function>);
   v8::Local<v8::Function> getTcpStreamConstructor();
 };

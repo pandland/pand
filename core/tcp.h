@@ -14,6 +14,7 @@ public:
     Pand *pand = Pand::get();
     pd_tcp_init(pand->ctx, &this->handle);
     this->handle.data = this;
+    this->handle.allocator = TcpStream::readAllocator;
     this->handle.on_close = TcpStream::onClose;
     this->handle.on_data = TcpStream::onData;
     this->obj.Reset(obj->GetIsolate(), obj);
@@ -43,7 +44,9 @@ public:
 
   static void onConnect(pd_tcp_t *, int);
 
-  static void onData(pd_tcp_t *, char *, size_t);
+  static void *readAllocator(pd_tcp_t *handle, size_t size, void **udata);
+
+  static void onData(pd_tcp_t *, char *, size_t, void *);
 
   static void onWrite(pd_write_t *, int);
 

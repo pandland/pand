@@ -78,7 +78,8 @@ struct pd_tcp_s {
     struct queue writes;
     pd_event_t event;
 #endif
-    void (*on_data)(struct pd_tcp_s *, char *buf, size_t size);
+    void* (*allocator)(struct pd_tcp_s *, size_t size, void**);
+    void (*on_data)(struct pd_tcp_s *, char *buf, size_t size, void* udata);
     void (*on_close)(struct pd_tcp_s *);
     void (*on_connect)(struct pd_tcp_s *, int);
     enum pd_tcp_status status;
@@ -123,6 +124,7 @@ struct pd_write_s {
     pd_buf_t data;
     struct queue_node qnode;
     size_t written;
+    void *udata;
 #endif
     pd_write_cb cb;
 };

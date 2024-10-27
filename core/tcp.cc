@@ -1,4 +1,12 @@
 #include "tcp.h"
+#include "pandio/tcp.h"
+#include <buffer.h>
+#include <errors.h>
+#include <iostream>
+#include <memory>
+#include <v8-array-buffer.h>
+#include <v8-typed-array.h>
+#include <writer.h>
 
 namespace pand::core {
 
@@ -156,16 +164,15 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   if (!stream)
     return;
 
-  // TODO: we do not have Buffer class yet, so we operate on strings...
-  v8::Local<v8::String> data = args[0]->ToString(context).ToLocalChecked();
-  size_t size = data->Utf8Length(isolate);
-  char *buffer = new char[size];
-  data->WriteUtf8(isolate, buffer, size, nullptr,
-                  v8::String::NO_NULL_TERMINATION);
-
-  pd_write_t *op = new pd_write_t;
-  pd_write_init(op, buffer, size, TcpStream::onWrite);
-  pd_tcp_write(&stream->handle, op);
+  if (args.Length() < 1 || !args[0]->IsArrayBuffer()) {
+    Errors::throwTypeException(isolate, "Expected <ArrayBuffer>");
+  }
+  
+  auto ab = args[0].As<v8::ArrayBuffer>();
+  char *payload = static_cast<char*>(ab->Data());
+  Writer *writer = new Writer(payload, ab->ByteLength());
+  writer->setBuffer(isolate,  ab);
+  pd_tcp_write(&stream->handle, &writer->op);
 }
 
 // callback handlers:
@@ -187,26 +194,35 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   Pand::makeCallback(obj, isolate, "onConnect", {}, 0);
 }
 
-void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
+void *TcpStream::readAllocator(pd_tcp_t *handle, size_t size, void **udata) {
+  Pand *pand = Pand::get();
+  auto bs = v8::ArrayBuffer::NewBackingStore(
+      pand->isolate, size, v8::BackingStoreInitializationMode::kUninitialized);
+
+  void *data = bs->Data();
+  *udata = bs.release(); // I don't like it but it works
+  return data;
+}
+
+void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size,
+                       void *udata) {
+  /* inside sandboxed v8 we cannot pass buffer from pandio's default allocator,
+  because v8 wants buffers from v8 sandbox memory space, so we need to fuck
+  around with NewBackingStore inside TcpStream::readAllocator and magically
+  transfer it to the onData callback. Node.js uses std::unordered_map<char*,
+  std::unique_ptr<v8::BackingStore>> - it is also legit option. */
+  std::unique_ptr<v8::BackingStore> bs =
+      std::unique_ptr<v8::BackingStore>(static_cast<v8::BackingStore *>(udata));
+
   Pand *pand = Pand::get();
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
 
-  v8::Local<v8::String> data =
-      v8::String::NewFromUtf8(isolate, buffer, v8::NewStringType::kNormal, size)
-          .ToLocalChecked();
-  v8::Local<v8::Value> argv = {data};
+  v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(isolate, std::move(bs));
+  v8::Local<v8::Value> argv = {ab};
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
   Pand::makeCallback(obj, isolate, "onData", &argv, 1);
-
-  // TODO: make ability to create own allocator in pandiolib
-  free(buffer); // our pandio uses C allocators
-}
-
-void TcpStream::onWrite(pd_write_t *op, int status) {
-  delete op->data.buf;
-  delete op;
 }
 
 void TcpStream::onClose(pd_tcp_t *handle) {

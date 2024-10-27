@@ -24,6 +24,7 @@ add_executable(pand
     core/bytes/transcoder.cc
     core/buffer.h
     core/buffer.cc
+    core/writer.h
     core/tcp.h
     core/tcp.cc
     core/tcp_server.h

@@ -25,10 +25,15 @@
 #include <stdio.h>
 
 
+void *pd__default_allocator(pd_tcp_t *stream, size_t size, void **udata) {
+    return malloc(size);
+}
+
 void pd_tcp_init(pd_io_t *ctx, pd_tcp_t *stream) {
     stream->fd = -1;
     stream->status = PD_TCP_NONE;
     stream->ctx = ctx;
+    stream->allocator = pd__default_allocator;
     stream->on_close = NULL;
     stream->on_data = NULL;
     stream->flags = 0;
@@ -208,13 +213,13 @@ void pd__tcp_read(pd_tcp_t *stream) {
         return;
     }
 
-    size_t read_size = 6 * 1024;
+    size_t read_size = 16 * 1024;
     ssize_t nread;
 
-    // TODO: make callback for own allocations/providing own buffer
-    char *buf = malloc(read_size);
+    void *udata = NULL;
+    char *buf = stream->allocator(stream, read_size, &udata);
     if (buf == NULL) {
-        stream->on_data(stream, buf, PD_ENOMEM); // in this scenario - we have no memory for new buffer
+        stream->on_data(stream, buf, PD_ENOMEM, udata); // in this scenario - we have no memory for new buffer
     }
 
     do {
@@ -229,13 +234,13 @@ void pd__tcp_read(pd_tcp_t *stream) {
     if (nread < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             // it's not error, but we have to report it in callback, because user should call free() on buf
-            stream->on_data(stream, buf, 0);
+            stream->on_data(stream, buf, 0, udata);
             return;
         } else {
-            stream->on_data(stream, buf, pd_errno());
+            stream->on_data(stream, buf, pd_errno(), udata);
         }
     } else {
-        stream->on_data(stream, buf, nread);
+        stream->on_data(stream, buf, nread, udata);
     }
 }
 
