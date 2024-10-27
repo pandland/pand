@@ -80,10 +80,10 @@ int main() {
         printf("Listener failed.\n");
     }
 
-    pd_timer_t timer;
-    pd_timer_init(ctx, &timer);
-    timer.data = server;
-    pd_timer_start(&timer, close_server, 10 * 1000);
+    //pd_timer_t timer;
+    //pd_timer_init(ctx, &timer);
+    //timer.data = server;
+    //pd_timer_start(&timer, close_server, 10 * 1000);
 
     pd_io_run(ctx);
 }

@@ -205,6 +205,7 @@ void pd_tcp_init(pd_io_t *ctx, pd_tcp_t *stream) {
     stream->fd = INVALID_SOCKET;
     stream->status = PD_TCP_NONE;
     stream->ctx = ctx;
+    stream->allocator = pd_default_allocator;
     stream->on_close = NULL;
     stream->on_data = NULL;
     stream->on_connect = NULL;
@@ -273,6 +274,7 @@ void pd_write_init(pd_write_t *write_op,
     write_op->cb = cb;
     write_op->data.buf = buf;
     write_op->data.len = size;
+    write_op->udata = NULL;
     pd__event_init(&write_op->event);
     write_op->event.data = write_op;
     write_op->event.handler = pd__tcp_write_io;
@@ -357,7 +359,7 @@ void pd__tcp_post_recv(pd_tcp_t *stream) {
     stream->revent.handler = pd__tcp_read_io;
 
     size_t alloc_size = 8 * 1024;
-    stream->read_buf.buf = malloc(alloc_size);
+    stream->read_buf.buf = stream->allocator(stream, alloc_size);
     if (stream->read_buf.buf == NULL) {
         stream->on_data(stream, NULL, PD_ENOMEM);
         return;

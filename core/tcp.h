@@ -9,6 +9,7 @@ class TcpStream {
 public:
   pd_tcp_t handle;
   v8::Persistent<v8::Object> obj;
+  std::unique_ptr<v8::BackingStore> read_bs;
 
   TcpStream(v8::Local<v8::Object> obj) {
     Pand *pand = Pand::get();
@@ -17,6 +18,7 @@ public:
     this->handle.allocator = TcpStream::readAllocator;
     this->handle.on_close = TcpStream::onClose;
     this->handle.on_data = TcpStream::onData;
+    this->read_bs = nullptr;
     this->obj.Reset(obj->GetIsolate(), obj);
   }
 
@@ -44,9 +46,9 @@ public:
 
   static void onConnect(pd_tcp_t *, int);
 
-  static void *readAllocator(pd_tcp_t *handle, size_t size, void **udata);
+  static void *readAllocator(pd_tcp_t *handle, size_t size);
 
-  static void onData(pd_tcp_t *, char *, size_t, void *);
+  static void onData(pd_tcp_t *, char *, size_t);
 
   static void onWrite(pd_write_t *, int);
 

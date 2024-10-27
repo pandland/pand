@@ -2,7 +2,6 @@
 #include "pandio/tcp.h"
 #include <buffer.h>
 #include <errors.h>
-#include <iostream>
 #include <memory>
 #include <v8-array-buffer.h>
 #include <v8-typed-array.h>
@@ -194,32 +193,23 @@ void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   Pand::makeCallback(obj, isolate, "onConnect", {}, 0);
 }
 
-void *TcpStream::readAllocator(pd_tcp_t *handle, size_t size, void **udata) {
+void *TcpStream::readAllocator(pd_tcp_t *handle, size_t size) {
   Pand *pand = Pand::get();
   auto bs = v8::ArrayBuffer::NewBackingStore(
       pand->isolate, size, v8::BackingStoreInitializationMode::kUninitialized);
+  TcpStream *stream = static_cast<TcpStream *>(handle->data);
+  stream->read_bs = std::move(bs);
 
-  void *data = bs->Data();
-  *udata = bs.release(); // I don't like it but it works
-  return data;
+  return stream->read_bs->Data();
 }
 
-void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size,
-                       void *udata) {
-  /* inside sandboxed v8 we cannot pass buffer from pandio's default allocator,
-  because v8 wants buffers from v8 sandbox memory space, so we need to fuck
-  around with NewBackingStore inside TcpStream::readAllocator and magically
-  transfer it to the onData callback. Node.js uses std::unordered_map<char*,
-  std::unique_ptr<v8::BackingStore>> - it is also legit option. */
-  std::unique_ptr<v8::BackingStore> bs =
-      std::unique_ptr<v8::BackingStore>(static_cast<v8::BackingStore *>(udata));
-
+void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
   Pand *pand = Pand::get();
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
-
-  v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(isolate, std::move(bs));
+  v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(isolate, std::move(stream->read_bs));
+  stream->read_bs = nullptr;
   v8::Local<v8::Value> argv = {ab};
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
   Pand::makeCallback(obj, isolate, "onData", &argv, 1);
