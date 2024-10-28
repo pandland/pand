@@ -3,6 +3,7 @@
 #include <buffer.h>
 #include <cstring>
 #include <errors.h>
+#include <iostream>
 #include <memory>
 #include <writer.h>
 
@@ -208,6 +209,16 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+
+  int status = int(size);
+  if (status < 0) {
+    stream->read_bs.reset();
+    auto err = Pand::makeSystemError(isolate, status);
+    v8::Local<v8::Value> argv[1] = {err};
+    Pand::makeCallback(obj, isolate, "onError", argv, 1);
+    return;
+  }
 
   // having much larger underlying ArrayBuffer than Buffer user receive may lead
   // to problems, so let's copy...
@@ -222,7 +233,6 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
   v8::Local<v8::ArrayBuffer> ab =
       v8::ArrayBuffer::New(isolate, std::move(stream->read_bs));
   v8::Local<v8::Value> argv[2] = {ab, Pand::integer(isolate, size)};
-  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
   Pand::makeCallback(obj, isolate, "onData", argv, 2);
 }
 
