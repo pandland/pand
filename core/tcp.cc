@@ -1,6 +1,7 @@
 #include "tcp.h"
 #include "pandio/tcp.h"
 #include <buffer.h>
+#include <cstring>
 #include <errors.h>
 #include <memory>
 #include <writer.h>
@@ -164,7 +165,7 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   if (args.Length() < 1 || !Buffer::isBuffer(args[0])) {
     Errors::throwTypeException(isolate, "Expected <Buffer> or <Uint8Array>");
   }
-  
+
   auto ui = args[0].As<v8::Uint8Array>();
   char *data = Buffer::getBytes(ui);
   size_t size = Buffer::getSize(ui);
@@ -207,7 +208,19 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
   v8::Isolate *isolate = pand->isolate;
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(isolate, std::move(stream->read_bs));
+
+  // having much larger underlying ArrayBuffer than Buffer user receive may lead
+  // to problems, so let's copy...
+  if (size != stream->read_bs->ByteLength()) {
+    auto bs = v8::ArrayBuffer::NewBackingStore(
+        pand->isolate, size,
+        v8::BackingStoreInitializationMode::kUninitialized);
+    stream->read_bs = std::move(bs);
+    memcpy(stream->read_bs->Data(), buffer, size);
+  }
+
+  v8::Local<v8::ArrayBuffer> ab =
+      v8::ArrayBuffer::New(isolate, std::move(stream->read_bs));
   v8::Local<v8::Value> argv[2] = {ab, Pand::integer(isolate, size)};
   v8::Local<v8::Object> obj = stream->obj.Get(isolate);
   Pand::makeCallback(obj, isolate, "onData", argv, 2);

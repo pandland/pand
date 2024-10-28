@@ -4,7 +4,7 @@ const server = new Server();
 
 server.onconnection = function(socket) {
   socket.ondata = (chunk) => {
-    console.log(chunk.toString('utf8'));
+    console.log(chunk.length, chunk.buffer.byteLength);
     socket.write(chunk);
     socket.shutdown();
   };
