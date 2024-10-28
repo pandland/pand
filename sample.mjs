@@ -1,10 +1,12 @@
 import { Server } from 'std:net';
+import { uuidv4 } from 'std:uuid';
 
 const server = new Server();
 
 server.onconnection = function(socket) {
   socket.ondata = (chunk) => {
-    socket.write("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nHello");
+    const res = uuidv4();
+    socket.write(`HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: ${res.length}\r\n\r\n${res}`);
     socket.shutdown();
   };
 

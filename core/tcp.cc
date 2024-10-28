@@ -3,7 +3,6 @@
 #include <buffer.h>
 #include <cstring>
 #include <errors.h>
-#include <iostream>
 #include <memory>
 #include <writer.h>
 
