@@ -4,13 +4,13 @@ function hexify(byte) {
   const upper = (byte & 0xf0) >> 4;
   const lower = byte & 0xf;
 
-  return `${chars[upper]}${chars[lower]}`;
+  return chars[upper] + chars[lower];
 }
 
 export function uuidv4() {
   const bytes = Buffer.random(16);
 
-  bytes[6] = (bytes[6] & 0xf0) | 0x40; // set "4" in upper bytes
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // set "4" in upper bytes
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
   return (
