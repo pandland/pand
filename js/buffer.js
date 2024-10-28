@@ -37,9 +37,13 @@ const encoders = {
 export class Buffer extends Uint8Array {
   static random(size) {
     const buffer = new Buffer(size);
-    fillRandom(buffer.buffer);
+    fillRandom(buffer);
 
     return buffer;
+  }
+
+  static fillRandom(buffer) {
+    fillRandom(buffer);
   }
 
   static from(...args) {

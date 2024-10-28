@@ -1,6 +1,6 @@
 const chars = "0123456789abcdef"
 
-function hexify(byte) {
+function hex(byte) {
   const upper = (byte & 0xf0) >> 4;
   const lower = byte & 0xf;
 
@@ -10,29 +10,29 @@ function hexify(byte) {
 export function uuidv4() {
   const bytes = Buffer.random(16);
 
-  bytes[6] = (bytes[6] & 0x0f) | 0x40; // set "4" in upper bytes
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
   return (
-    hexify(bytes[0]) +
-    hexify(bytes[1]) +
-    hexify(bytes[2]) +
-    hexify(bytes[3]) +
+    hex(bytes[0]) +
+    hex(bytes[1]) +
+    hex(bytes[2]) +
+    hex(bytes[3]) +
     "-" +
-    hexify(bytes[4]) +
-    hexify(bytes[5]) +
+    hex(bytes[4]) +
+    hex(bytes[5]) +
     "-" +
-    hexify(bytes[6]) +
-    hexify(bytes[7]) +
+    hex(bytes[6]) +
+    hex(bytes[7]) +
     "-" +
-    hexify(bytes[8]) +
-    hexify(bytes[9]) +
+    hex(bytes[8]) +
+    hex(bytes[9]) +
     "-" +
-    hexify(bytes[10]) +
-    hexify(bytes[11]) +
-    hexify(bytes[12]) +
-    hexify(bytes[13]) +
-    hexify(bytes[14]) +
-    hexify(bytes[15])
+    hex(bytes[10]) +
+    hex(bytes[11]) +
+    hex(bytes[12]) +
+    hex(bytes[13]) +
+    hex(bytes[14]) +
+    hex(bytes[15])
   );
 }

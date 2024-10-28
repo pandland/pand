@@ -31,13 +31,13 @@ void Buffer::fillRandom(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-  if (args.Length() < 1 || !args[0]->IsArrayBuffer()) {
+  if (args.Length() < 1 || !Buffer::isBuffer(args[0])) {
     Errors::throwTypeException(isolate, "Invalid buffer");
     return;
   }
 
-  v8::Local<v8::ArrayBuffer> buf = args[0].As<v8::ArrayBuffer>();
-  int errcode = pd_random(buf->Data(), buf->ByteLength());
+  v8::Local<v8::Uint8Array> buf = args[0].As<v8::Uint8Array>();
+  int errcode = pd_random(Buffer::getBytes(buf), Buffer::getSize(buf));
   if (errcode < 0) {
     isolate->ThrowException(Pand::makeSystemError(isolate, errcode));
   }
