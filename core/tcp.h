@@ -50,7 +50,7 @@ public:
 
   static void onData(pd_tcp_t *, char *, size_t);
 
-  static void onWrite(pd_write_t *, int);
+  static void onWrite(TcpStream *, int, size_t);
 
   static void onClose(pd_tcp_t *);
 };

@@ -1,4 +1,4 @@
-const { TcpStream, TcpServer } = Runtime.bind('tcp');
+const { TcpStream, TcpServer } = Runtime.bind("tcp");
 
 const kEmpty = 0;
 const kConnecting = 1;
@@ -21,6 +21,7 @@ export class Socket {
     this.#handle.onError = this.#onError.bind(this);
     this.#handle.onData = this.#onData.bind(this);
     this.#handle.onClose = this.#onClose.bind(this);
+    this.#handle.onWrite = this.#onWrite.bind(this);
   }
 
   get connecting() {
@@ -45,10 +46,14 @@ export class Socket {
     }
   }
 
+  #onWrite(size) {
+    // will be usefull when we will implement backpressure
+  }
+
   #onClose() {
     if (this.#queue.length > 0) {
       const promise = this.#queue.shift();
-      promise.reject(new Error('Connection closed by peer'));
+      promise.reject(new Error("Connection closed by peer"));
     }
     this.#handle = null;
     this.#state = kDestroyed;
@@ -114,15 +119,16 @@ export class Socket {
     }
 
     let buf;
-    if (typeof chunk === 'string') {
+    if (typeof chunk === "string") {
       buf = Buffer.from(chunk, encoding);
-    }
-    else if (chunk instanceof Uint8Array) {
+    } else if (chunk instanceof Uint8Array) {
       buf = chunk;
     }
 
     if (!buf) {
-      throw new TypeError('Write buffer must be a string, <Uint8Array> or <Buffer>');
+      throw new TypeError(
+        "Write buffer must be a string, <Uint8Array> or <Buffer>"
+      );
     }
 
     this.#handle.write(buf);

@@ -3,6 +3,7 @@
 #include <buffer.h>
 #include <cstring>
 #include <errors.h>
+#include <iostream>
 #include <memory>
 #include <writer.h>
 
@@ -167,14 +168,30 @@ void TcpStream::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
 
   auto ui = args[0].As<v8::Uint8Array>();
-  char *data = Buffer::getBytes(ui);
-  size_t size = Buffer::getSize(ui);
-  Writer *writer = new Writer(data, size);
-  writer->setBufferView(isolate, ui);
+  auto *writer = new Writer<TcpStream>(stream, ui, TcpStream::onWrite);
+
   pd_tcp_write(&stream->handle, &writer->op);
 }
 
 // callback handlers:
+void TcpStream::onWrite(TcpStream *stream, int status, size_t written) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+
+  v8::Local<v8::Object> obj = stream->obj.Get(isolate);
+
+  if (status < 0) {
+    auto err = Pand::makeSystemError(isolate, status);
+    v8::Local<v8::Value> argv[1] = {err};
+    Pand::makeCallback(obj, isolate, "onError", argv, 1);
+    return;
+  }
+
+  v8::Local<v8::Value> argv[1] = {Pand::integer(isolate, written)};
+  Pand::makeCallback(obj, isolate, "onWrite", argv, 1);
+}
+
 void TcpStream::onConnect(pd_tcp_t *handle, int status) {
   Pand *pand = Pand::get();
   TcpStream *stream = static_cast<TcpStream *>(handle->data);
