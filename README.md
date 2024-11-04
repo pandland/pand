@@ -26,11 +26,10 @@ git clone https://github.com/pandland/pand.git
 
 ### Building
 
-Make sure you have CMake installed. Build infrastructure is still in early stage, currently we rely on newest version of v8 - this is not what I want, but for now it's fine.
+Make sure you have CMake installed. Build infrastructure is still in **early stage**, currently we rely on newest version of v8 - this is not what I want, but for now it's fine.
 
 You need to download v8 as dependency and it will take reasonable amount of time to compile (even 40 mins - depends on machine).
 
-Windows build scripts are still in progress (and this is terrible experience).
 
 ```sh
 # Download v8 and build
