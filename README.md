@@ -18,6 +18,14 @@
 
 Simple, free and open-source JavaScript runtime environment. Everything under single executable called `pand`.
 
+### Install
+
+Very early builds are available
+
+```sh
+curl https://pandland.github.io/install | sh
+```
+
 ### Clone
 
 ```sh
