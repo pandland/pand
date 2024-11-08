@@ -20,7 +20,7 @@ Simple, free and open-source JavaScript runtime environment. Everything under si
 
 ### Install
 
-Very early builds are available
+Very early builds are available on **Linux only**
 
 ```sh
 curl https://pandland.github.io/install | sh
