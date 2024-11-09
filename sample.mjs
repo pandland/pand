@@ -10,4 +10,6 @@ const buf = new Buffer(1024);
 const size = await file.read(buf);
 
 console.log("size:", size);
-console.log(buf.toString("utf8"));
+console.log(buf);
+
+await file.close();

@@ -54,6 +54,10 @@ void File::initialize(v8::Local<v8::Object> exports) {
       v8::FunctionTemplate::New(isolate, File::read);
   t->PrototypeTemplate()->Set(isolate, "read", readT);
 
+  v8::Local<v8::FunctionTemplate> closeT =
+      v8::FunctionTemplate::New(isolate, File::close);
+  t->PrototypeTemplate()->Set(isolate, "close", closeT);
+
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
       ->Set(context, v8::String::NewFromUtf8(isolate, "File").ToLocalChecked(),
@@ -159,6 +163,42 @@ void File::onRead(pd_fs_t *op) {
 
   resolver->Resolve(context, Pand::integer(isolate, op->result.size)).ToChecked();
   delete readOp;
+}
+
+void File::close(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
+  pd_io_t *ctx = Pand::get()->ctx;
+
+  auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
+  auto *closeOp = new FileOperation(ctx, file);
+  closeOp->setResolver(resolver);
+
+  pd_fs_close(&closeOp->op, file->fd, File::onClose);
+
+  args.GetReturnValue().Set(resolver->GetPromise());
+}
+
+void File::onClose(pd_fs_t *op) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  auto *closeOp = static_cast<FileOperation *>(op->udata);
+  auto resolver = closeOp->resolver.Get(isolate);
+  if (op->status < 0) {
+    auto err = Pand::makeSystemError(isolate, op->status);
+    resolver->Reject(context, err).ToChecked();
+    delete closeOp;
+
+    return;
+  }
+  closeOp->file->isClosed = true;
+  resolver->Resolve(context, v8::Undefined(isolate)).ToChecked();
+  delete closeOp;
 }
 
 }
