@@ -63,6 +63,41 @@ void File::initialize(v8::Local<v8::Object> exports) {
       ->Set(context, v8::String::NewFromUtf8(isolate, "File").ToLocalChecked(),
             func)
       .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_RDONLY"),
+            Pand::integer(isolate, PD_FS_O_RDONLY))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_WRONLY"),
+            Pand::integer(isolate, PD_FS_O_WRONLY))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_CREAT"),
+            Pand::integer(isolate, PD_FS_O_CREAT))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_APPEND"),
+            Pand::integer(isolate, PD_FS_O_APPEND))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_EXCL"),
+            Pand::integer(isolate, PD_FS_O_EXCL))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_RDWR"),
+            Pand::integer(isolate, PD_FS_O_RDWR))
+      .ToChecked();
+
+  exports
+      ->Set(context, Pand::symbol(isolate, "O_TRUNC"),
+            Pand::integer(isolate, PD_FS_O_TRUNC))
+      .ToChecked();
 }
 
 void File::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -77,12 +112,28 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
-  if (args.Length() < 1 && !args[0]->IsString()) {
+  if (args.Length() < 2 ) {
+    auto err = Errors::TypeError(isolate, "Expected 2 arguments");
+    resolver->Reject(context, err).ToChecked();
+    args.GetReturnValue().Set(resolver->GetPromise());
+    return;
+  }
+
+  if (!args[0]->IsString()) {
     auto err = Errors::TypeError(isolate, "Expected path to be string");
     resolver->Reject(context, err).ToChecked();
     args.GetReturnValue().Set(resolver->GetPromise());
+    return;
   }
 
+  if (!args[1]->IsInt32()) {
+    auto err = Errors::TypeError(isolate, "Open flags must be 32 bit integer");
+    resolver->Reject(context, err).ToChecked();
+    args.GetReturnValue().Set(resolver->GetPromise());
+    return;
+  }
+
+  int32_t flags = args[1]->Int32Value(context).ToChecked();
   v8::String::Utf8Value path(isolate, args[0]);
   pd_io_t *ctx = Pand::get()->ctx;
 
@@ -91,7 +142,7 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
   openOp->setResolver(resolver);
 
   // pd_fs_open copies data from path - we DO NOT transfer ownership here
-  pd_fs_open(&openOp->op, *path, PD_FS_O_RDONLY, File::onOpen);
+  pd_fs_open(&openOp->op, *path, flags, File::onOpen);
 
   args.GetReturnValue().Set(resolver->GetPromise());
 }
