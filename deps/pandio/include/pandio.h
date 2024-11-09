@@ -9,6 +9,7 @@ extern "C" {
 #include "pandio/tcp.h"
 #include "pandio/timers.h"
 #include "pandio/threadpool.h"
+#include "pandio/fs.h"
 
 #ifdef __cplusplus
 } // extern "C"

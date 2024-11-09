@@ -28,10 +28,10 @@ cmake --build .
 - [x] Support Windows.
 - [x] Thread pool.
 - [x] Support BSD/MacOS (tested only on FreeBSD).
+- [x] Async files operations (experimental - currently only most basic operations are available).
+- [x] Better error handling and error reporting to the end-user.
 - [ ] Signals.
 - [ ] Fix tests and GitHub workflows.
-- [ ] Async files operations.
-- [ ] Better error handling and error reporting to the end-user.
 
 ## License
 

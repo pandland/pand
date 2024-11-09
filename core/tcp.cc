@@ -62,7 +62,7 @@ void TcpStream::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
   assert(args.IsConstructCall());
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  TcpStream *stream = new TcpStream(args.This());
+  auto *stream = new TcpStream(args.This());
   args.This()->SetAlignedPointerInInternalField(0, stream);
 }
 

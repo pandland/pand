@@ -15,6 +15,7 @@ static Pand *instance = nullptr;
 Pand::Pand() {
   ctx = new pd_io_t;
   pd_io_init(ctx);
+  pd_threadpool_init(4);
   pd_set_after_tick(ctx, Errors::checkPendingErrors);
 
   platform = v8::platform::NewDefaultPlatform();
@@ -65,6 +66,7 @@ void Pand::run(const std::string &entryfile, int argc, char **argv) {
   Loader::execScript(isolate, entryfile);
 
   pd_io_run(ctx);
+  pd_threadpool_end();
   Errors::checkPendingErrors(ctx);
 }
 

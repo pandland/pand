@@ -44,6 +44,7 @@ int pd_task_submit(pd_io_t *ctx, pd_task_t *task) {
         return PD_ECANCELED;
 
     task->ctx = ctx;
+    ctx->refs++;
     queue_init_node(&task->qnode);
     pd_mutex_lock(&mux);
     queue_push(&tasks, &task->qnode);
@@ -123,6 +124,8 @@ void pd__task_done(pd_notifier_t *notifier) {
 
         if (task->done)
             task->done(task);
+
+        ctx->refs--;
     }
 }
 

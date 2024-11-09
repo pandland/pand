@@ -30,6 +30,8 @@ add_executable(pand
     core/tcp_server.h
     core/tcp_server.cc
     core/main.cc
+        core/fs.h
+        core/fs.cc
 )
 
 target_include_directories(pand SYSTEM

@@ -1,23 +1,15 @@
-import { Server } from 'std:net';
-import { uuidv4 } from 'std:uuid';
+import path from 'std:path'
+const { File } = Runtime.bind("fs");
 
-const server = new Server();
+// my cwd is inside build dir when I test PandJS
+const filepath = path.join(Runtime.cwd(), "../sample.mjs");
+const file = new File();
+const promise = file.open(filepath)
+promise.then((fd) => {
+    console.log("fd:", fd);
+    console.log(promise);
+}).catch((err) => {
+    console.log("error:", err.message);
+});
 
-server.onconnection = function(socket) {
-  socket.ondata = (chunk) => {
-    const res = uuidv4();
-    socket.write(`HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: ${res.length}\r\n\r\n${res}`);
-    socket.shutdown();
-  };
-
-  socket.onerror = (err) => {
-    console.log('unexpected error');
-    console.log(err);
-  }
-
-  socket.onclose = () => {
-    //console.log("connection closed");
-  };
-}
-
-server.listen(5000);
+console.log(promise);

@@ -9,7 +9,7 @@ const errcodes = {
   ENXIO: { code: 6, message: "No such device or address" },
   E2BIG: { code: 7, message: "Argument list too long" },
   ENOEXEC: { code: 8, message: "Exec format error" },
-  EBADF: { code: 9, message: "Bad file number" },
+  EBADF: { code: 9, message: "Bad file descriptor" },
   ECHILD: { code: 10, message: "No child processes" },
   EAGAIN: { code: 11, message: "Try again" },
   ENOMEM: { code: 12, message: "Out of memory" },

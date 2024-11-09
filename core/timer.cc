@@ -37,7 +37,7 @@ void Timer::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
   assert(args.IsConstructCall());
   v8::Isolate *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
-  Timer *timer = new Timer(args.This());
+  auto *timer = new Timer(args.This());
   args.This()->SetAlignedPointerInInternalField(0, timer);
   active_timers[timer->id] = timer;
 }

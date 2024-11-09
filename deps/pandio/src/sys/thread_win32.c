@@ -110,7 +110,7 @@ void pd_thread_join(pd_thread_t *thread) {
     WaitForSingleObject(*thread, INFINITE);
 }
 
-BOOL pd__init_once(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context) {
+BOOL WINAPI pd__init_once(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context) {
     void (*init_routine)(void) = Parameter;
     init_routine();
     return TRUE;

@@ -9,6 +9,10 @@ server.onconnection = function(socket) {
     socket.shutdown();
   };
 
+  socket.onerror = (err) => {
+    console.log(err);
+  }
+
   socket.onclose = () => {
     console.log("connection closed");
   };

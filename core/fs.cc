@@ -1,0 +1,97 @@
+#include "fs.h"
+#include "pand.h"
+#include "errors.h"
+#include <iostream>
+
+namespace pand::core {
+
+struct FileOperation {
+  File *file;
+  v8::Persistent<v8::Promise::Resolver> resolver;
+  pd_fs_t op{};
+
+  FileOperation(pd_io_t *ctx, File *file): file(file) {
+    pd_fs_init(ctx, &op);
+    op.udata = this;
+  }
+
+  void setResolver(v8::Local<v8::Promise::Resolver> value) {
+    this->resolver.Reset(value->GetIsolate(), value);
+  }
+};
+
+void File::initialize(v8::Local<v8::Object> exports) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  v8::Local<v8::FunctionTemplate> t =
+      v8::FunctionTemplate::New(isolate, File::constructor);
+
+  t->SetClassName(Pand::symbol(isolate, "File"));
+  t->InstanceTemplate()->SetInternalFieldCount(1);
+
+  v8::Local<v8::FunctionTemplate> openT =
+      v8::FunctionTemplate::New(isolate, File::open);
+  t->PrototypeTemplate()->Set(isolate, "open", openT);
+
+  v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
+  exports
+      ->Set(context, v8::String::NewFromUtf8(isolate, "File").ToLocalChecked(),
+            func)
+      .ToChecked();
+}
+
+void File::constructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+
+  new File(args.This());
+}
+
+void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
+  if (args.Length() < 1 && !args[0]->IsString()) {
+    auto err = Errors::TypeError(isolate, "Expected path to be string!");
+    resolver->Reject(context, err).ToChecked();
+    args.GetReturnValue().Set(resolver->GetPromise());
+  }
+
+  v8::String::Utf8Value path(isolate, args[0]);
+  pd_io_t *ctx = Pand::get()->ctx;
+
+  auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
+  auto *openOp = new FileOperation(ctx, file);
+  openOp->setResolver(resolver);
+
+  // pd_fs_open copies data from path - we DO NOT transfer ownership here
+  pd_fs_open(&openOp->op, *path, PD_FS_O_RDONLY, File::onOpen);
+
+  args.GetReturnValue().Set(resolver->GetPromise());
+}
+
+void File::onOpen(pd_fs_t *op) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  auto *openOp = static_cast<FileOperation *>(op->udata);
+  auto resolver = openOp->resolver.Get(isolate);
+  if (op->status < 0) {
+    auto err = Pand::makeSystemError(isolate, op->status);
+    resolver->Reject(context, err).ToChecked();
+    delete openOp;
+
+    return;
+  }
+
+  openOp->file->fd = op->result.fd;
+  resolver->Resolve(context, Pand::value(isolate, op->result.fd)).ToChecked();
+  delete openOp;
+}
+
+}

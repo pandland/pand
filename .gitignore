@@ -36,6 +36,7 @@ build/
 .cache/
 .idea/
 cmake-build-debug-visual-studio/
+cmake-build-debug
 
 # v8 related:
 deps/v8
@@ -47,3 +48,4 @@ deps/.gcs_entries
 # some random js files where I test things (right now):
 ex.js
 _net.js
+_node.js

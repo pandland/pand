@@ -3,6 +3,7 @@
 #include "tcp.h"
 #include "tcp_server.h"
 #include "timer.h"
+#include "fs.h"
 #include <bytes/transcoder.h>
 #include <filesystem>
 #include <iostream>
@@ -143,6 +144,8 @@ void Runtime::bind(const v8::FunctionCallbackInfo<v8::Value> &args) {
     Buffer::initialize(exports);
   } else if (name == "transcoder") {
     Transcoder::initialize(exports);
+  } else if (name == "fs") {
+    File::initialize(exports);
   }
 
   args.GetReturnValue().Set(exports);

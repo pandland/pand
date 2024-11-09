@@ -20,6 +20,7 @@ set(SRC_FILES
         include/pandio/threadpool.h
         include/pandio/err.h
         src/dlib.c
+        include/pandio/fs.h
 )
 
 if (WIN32)
@@ -28,6 +29,7 @@ if (WIN32)
             src/sys/tcp_win32.c
             src/sys/notifier_win32.c
             src/sys/thread_win32.c
+            src/sys/fs_win32.c
     )
 
     add_library(pandio STATIC ${SRC_FILES})
@@ -48,6 +50,7 @@ elseif (UNIX)
         src/sys/tcp_unix.c
         src/sys/notifier_unix.c
         src/sys/thread_unix.c
+        src/sys/fs_unix.c
     )
 
     set(CMAKE_THREAD_PREFER_PTHREAD TRUE)

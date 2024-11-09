@@ -822,7 +822,7 @@
    X(PD_ENXIO, "No such device or address")       \
    X(PD_E2BIG, "Argument list too long")       \
    X(PD_ENOEXEC, "Exec format error")       \
-   X(PD_EBADF, "Bad file number")       \
+   X(PD_EBADF, "Bad file descriptor")       \
    X(PD_ECHILD, "No child processes")       \
    X(PD_EAGAIN, "Try again")       \
    X(PD_ENOMEM, "Out of memory")       \

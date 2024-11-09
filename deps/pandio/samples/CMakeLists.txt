@@ -11,3 +11,6 @@ target_link_libraries(sample_client PRIVATE pandio)
 
 add_executable(sample_random random.c)
 target_link_libraries(sample_random PRIVATE pandio)
+
+add_executable(sample_fs fs.c)
+target_link_libraries(sample_fs PRIVATE pandio)
