@@ -1,6 +1,7 @@
 #include "fs.h"
 #include "pand.h"
 #include "errors.h"
+#include "buffer.h"
 #include <iostream>
 
 namespace pand::core {
@@ -15,8 +16,22 @@ struct FileOperation {
     op.udata = this;
   }
 
+  virtual ~FileOperation() {
+      resolver.Reset();
+  }
+
   void setResolver(v8::Local<v8::Promise::Resolver> value) {
     this->resolver.Reset(value->GetIsolate(), value);
+  }
+};
+
+struct ReadFileOperation : FileOperation {
+  v8::Persistent<v8::Value> buffer;
+
+  using FileOperation::FileOperation;
+
+  ~ReadFileOperation() override {
+    buffer.Reset();
   }
 };
 
@@ -34,6 +49,10 @@ void File::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> openT =
       v8::FunctionTemplate::New(isolate, File::open);
   t->PrototypeTemplate()->Set(isolate, "open", openT);
+
+  v8::Local<v8::FunctionTemplate> readT =
+      v8::FunctionTemplate::New(isolate, File::read);
+  t->PrototypeTemplate()->Set(isolate, "read", readT);
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
@@ -55,7 +74,7 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
   if (args.Length() < 1 && !args[0]->IsString()) {
-    auto err = Errors::TypeError(isolate, "Expected path to be string!");
+    auto err = Errors::TypeError(isolate, "Expected path to be string");
     resolver->Reject(context, err).ToChecked();
     args.GetReturnValue().Set(resolver->GetPromise());
   }
@@ -89,9 +108,57 @@ void File::onOpen(pd_fs_t *op) {
     return;
   }
 
+  openOp->file->isClosed = false;
   openOp->file->fd = op->result.fd;
   resolver->Resolve(context, Pand::value(isolate, op->result.fd)).ToChecked();
   delete openOp;
+}
+
+void File::read(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
+  if (args.Length() < 1 && Buffer::isBuffer(args[0])) {
+    auto err = Errors::TypeError(isolate, "Expected buffer to be <Buffer> or <Uint8Array>");
+    resolver->Reject(context, err).ToChecked();
+    args.GetReturnValue().Set(resolver->GetPromise());
+  }
+
+  pd_io_t *ctx = Pand::get()->ctx;
+
+  v8::Local<v8::Uint8Array> buffer = args[0].As<v8::Uint8Array>();
+  auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
+  auto *readOp = new ReadFileOperation(ctx, file);
+  readOp->buffer.Reset(isolate, buffer);
+  readOp->setResolver(resolver);
+
+  char *data = Buffer::getBytes(buffer);
+  size_t size = Buffer::getSize(buffer);
+
+  pd_fs_read(&readOp->op, file->fd, data, size, File::onRead);
+
+  args.GetReturnValue().Set(resolver->GetPromise());
+}
+
+void File::onRead(pd_fs_t *op) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  auto *readOp = static_cast<ReadFileOperation *>(op->udata);
+  auto resolver = readOp->resolver.Get(isolate);
+  if (op->status < 0) {
+    auto err = Pand::makeSystemError(isolate, op->status);
+    resolver->Reject(context, err).ToChecked();
+    delete readOp;
+
+    return;
+  }
+
+  resolver->Resolve(context, Pand::integer(isolate, op->result.size)).ToChecked();
+  delete readOp;
 }
 
 }

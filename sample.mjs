@@ -4,12 +4,10 @@ const { File } = Runtime.bind("fs");
 // my cwd is inside build dir when I test PandJS
 const filepath = path.join(Runtime.cwd(), "../sample.mjs");
 const file = new File();
-const promise = file.open(filepath)
-promise.then((fd) => {
-    console.log("fd:", fd);
-    console.log(promise);
-}).catch((err) => {
-    console.log("error:", err.message);
-});
+await file.open(filepath)
 
-console.log(promise);
+const buf = new Buffer(1024);
+const size = await file.read(buf);
+
+console.log("size:", size);
+console.log(buf.toString("utf8"));
