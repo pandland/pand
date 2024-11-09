@@ -25,12 +25,12 @@ struct FileOperation {
   }
 };
 
-struct ReadFileOperation : FileOperation {
+struct BufferedFileOperation : FileOperation {
   v8::Persistent<v8::Value> buffer;
 
   using FileOperation::FileOperation;
 
-  ~ReadFileOperation() override {
+  ~BufferedFileOperation() override {
     buffer.Reset();
   }
 };
@@ -53,6 +53,10 @@ void File::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> readT =
       v8::FunctionTemplate::New(isolate, File::read);
   t->PrototypeTemplate()->Set(isolate, "read", readT);
+
+  v8::Local<v8::FunctionTemplate> writeT =
+      v8::FunctionTemplate::New(isolate, File::write);
+  t->PrototypeTemplate()->Set(isolate, "write", writeT);
 
   v8::Local<v8::FunctionTemplate> closeT =
       v8::FunctionTemplate::New(isolate, File::close);
@@ -133,6 +137,11 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
     return;
   }
 
+  int mode = 0666;
+  if (args.Length() == 3 && args[2]->IsInt32()) {
+    mode = args[2]->Int32Value(context).ToChecked();
+  }
+
   int32_t flags = args[1]->Int32Value(context).ToChecked();
   v8::String::Utf8Value path(isolate, args[0]);
   pd_io_t *ctx = Pand::get()->ctx;
@@ -142,7 +151,7 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
   openOp->setResolver(resolver);
 
   // pd_fs_open copies data from path - we DO NOT transfer ownership here
-  pd_fs_open(&openOp->op, *path, flags, File::onOpen);
+  pd_fs_open(&openOp->op, *path, flags, mode, File::onOpen);
 
   args.GetReturnValue().Set(resolver->GetPromise());
 }
@@ -184,7 +193,7 @@ void File::read(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   v8::Local<v8::Uint8Array> buffer = args[0].As<v8::Uint8Array>();
   auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
-  auto *readOp = new ReadFileOperation(ctx, file);
+  auto *readOp = new BufferedFileOperation(ctx, file);
   readOp->buffer.Reset(isolate, buffer);
   readOp->setResolver(resolver);
 
@@ -202,7 +211,7 @@ void File::onRead(pd_fs_t *op) {
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
-  auto *readOp = static_cast<ReadFileOperation *>(op->udata);
+  auto *readOp = static_cast<BufferedFileOperation *>(op->udata);
   auto resolver = readOp->resolver.Get(isolate);
   if (op->status < 0) {
     auto err = Pand::makeSystemError(isolate, op->status);
@@ -214,6 +223,53 @@ void File::onRead(pd_fs_t *op) {
 
   resolver->Resolve(context, Pand::integer(isolate, op->result.size)).ToChecked();
   delete readOp;
+}
+
+void File::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
+  if (args.Length() < 1 && Buffer::isBuffer(args[0])) {
+    auto err = Errors::TypeError(isolate, "Expected buffer to be <Buffer> or <Uint8Array>");
+    resolver->Reject(context, err).ToChecked();
+    args.GetReturnValue().Set(resolver->GetPromise());
+  }
+
+  pd_io_t *ctx = Pand::get()->ctx;
+
+  v8::Local<v8::Uint8Array> buffer = args[0].As<v8::Uint8Array>();
+  auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
+  auto *writeOp = new BufferedFileOperation(ctx, file);
+  writeOp->buffer.Reset(isolate, buffer);
+  writeOp->setResolver(resolver);
+
+  char *data = Buffer::getBytes(buffer);
+  size_t size = Buffer::getSize(buffer);
+
+  pd_fs_write(&writeOp->op, file->fd, data, size, File::onWrite);
+
+  args.GetReturnValue().Set(resolver->GetPromise());
+}
+
+void File::onWrite(pd_fs_t *op) {
+  Pand *pand = Pand::get();
+  v8::Isolate *isolate = pand->isolate;
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+  auto *writeOp = static_cast<BufferedFileOperation *>(op->udata);
+  auto resolver = writeOp->resolver.Get(isolate);
+  if (op->status < 0) {
+    auto err = Pand::makeSystemError(isolate, op->status);
+    resolver->Reject(context, err).ToChecked();
+    delete writeOp;
+
+    return;
+  }
+
+  resolver->Resolve(context, Pand::integer(isolate, op->result.size)).ToChecked();
+  delete writeOp;
 }
 
 void File::close(const v8::FunctionCallbackInfo<v8::Value> &args) {

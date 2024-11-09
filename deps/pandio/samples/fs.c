@@ -1,4 +1,3 @@
-#include "pandio/fs.h"
 #include <pandio.h>
 #include <stdio.h>
 
@@ -89,11 +88,11 @@ int main() {
 
   pd_fs_t *op = malloc(sizeof(pd_fs_t));
   pd_fs_init(ctx, op);
-  pd_fs_open(op, "read.txt", PD_FS_O_RDONLY, on_open);
+  pd_fs_open(op, "read.txt", PD_FS_O_RDONLY, 0666, on_open);
 
   pd_fs_t *write_op = malloc(sizeof(pd_fs_t));
   pd_fs_init(ctx, write_op);
-  pd_fs_open(write_op, "hello.txt", PD_FS_O_WRONLY | PD_FS_O_TRUNC, start_writing);
+  pd_fs_open(write_op, "hello.txt", PD_FS_O_WRONLY | PD_FS_O_TRUNC, 0666, start_writing);
 
   pd_io_run(ctx);
   pd_threadpool_end();

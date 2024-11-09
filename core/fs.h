@@ -34,6 +34,8 @@ public:
 
   static void write(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void onWrite(pd_fs_t *);
+
   static void close(const v8::FunctionCallbackInfo<v8::Value> &);
 
   static void onClose(pd_fs_t *);

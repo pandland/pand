@@ -42,10 +42,11 @@ void pd__fs_open_work(pd_task_t *task) {
   pd_fs_t *op = (pd_fs_t *)(task);
   char *path = op->params.open.path;
   int oflag = op->params.open.oflag;
+  int mode = op->params.open.mode;
   int fd;
 
   do {
-    fd = open(path, oflag);
+    fd = open(path, oflag, mode);
   } while (fd < 0 && errno == EINTR);
 
   if (fd < 0) {
@@ -59,10 +60,11 @@ void pd__fs_open_work(pd_task_t *task) {
   op->params.open.path = NULL;
 }
 
-void pd_fs_open(pd_fs_t *op, const char *path, int oflag,
+void pd_fs_open(pd_fs_t *op, const char *path, int oflag, int mode,
                 void (*cb)(pd_fs_t *))  {
   op->params.open.path = strdup(path);
   op->params.open.oflag = oflag;
+  op->params.open.mode = mode;
   op->type = pd_open_op;
   op->cb = cb;
   op->task.work = pd__fs_open_work;

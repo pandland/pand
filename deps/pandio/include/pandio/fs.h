@@ -50,6 +50,7 @@
   X(open, {                                                                    \
     char *path;                                                                \
     int oflag;                                                                 \
+    int mode;                                                                  \
   })                                                                           \
   X(read, {                                                                    \
     pd_fd_t fd;                                                                \
@@ -97,7 +98,7 @@ typedef void (*pd_fs_cb_t)(pd_fs_t *);
 
 void pd_fs_init(pd_io_t *, pd_fs_t *);
 
-void pd_fs_open(pd_fs_t *, const char *, int, pd_fs_cb_t);
+void pd_fs_open(pd_fs_t *, const char *, int, int, pd_fs_cb_t);
 
 void pd_fs_read(pd_fs_t *, pd_fd_t, char *, size_t, pd_fs_cb_t);
 

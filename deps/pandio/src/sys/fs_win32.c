@@ -77,9 +77,10 @@ void pd__fs_open_work(pd_task_t *task) {
   op->params.open.path = NULL;
 }
 
-void pd_fs_open(pd_fs_t *op, const char *path, int oflag, pd_fs_cb_t cb) {
+void pd_fs_open(pd_fs_t *op, const char *path, int oflag, int mode, pd_fs_cb_t cb) {
   op->params.open.path = _strdup(path);
   op->params.open.oflag = oflag;
+  op->params.open.mode = mode;
   op->type = pd_open_op;
   op->cb = cb;
   op->task.work = pd__fs_open_work;
