@@ -32,6 +32,7 @@ void Runtime::initialize(v8::Local<v8::ObjectTemplate> runtime_template,
   runtime_template->Set(
       isolate, "promiseState",
       v8::FunctionTemplate::New(isolate, Runtime::promiseState));
+
   runtime_template->Set(isolate, "isProxy",
                         v8::FunctionTemplate::New(isolate, Runtime::isProxy));
   runtime_template->Set(isolate, "platform",

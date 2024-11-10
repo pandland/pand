@@ -17,7 +17,7 @@ Pand::Pand() {
   pd_io_init(ctx);
   pd_threadpool_init(4);
   pd_set_after_tick(ctx, Errors::checkPendingErrors);
-
+  //v8::V8::SetFlagsFromString("--max-old-space-size=2048 --trace-gc");
   platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(platform.get());
   v8::V8::Initialize();

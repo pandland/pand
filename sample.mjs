@@ -1,15 +1,17 @@
 import path from 'std:path'
-const { File, O_WRONLY, O_CREAT } = Runtime.bind("fs");
+const { File, O_WRONLY, O_CREAT, O_APPEND } = Runtime.bind("fs");
 
-// my cwd is inside build dir when I test PandJS
-const filepath = path.join(Runtime.cwd(), "../test.md");
-const file = new File();
-await file.open(filepath, O_WRONLY | O_CREAT);
+async function handleFile() {
+    const filepath = path.join(Runtime.cwd(), "../test.md");
+    let file = new File();
+    await file.open(filepath, O_WRONLY | O_CREAT | O_APPEND);
 
-const buf = Buffer.from("## Hello from fs.write");
-const size = await file.write(buf);
+    const buf = Buffer.from("a");
+    const size = await file.write(buf);
 
-console.log("size:", size);
-console.log(buf);
+    await file.close();
+}
 
-await file.close();
+for (let i = 0; i < 1000; ++i) {
+    await handleFile();
+}

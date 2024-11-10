@@ -9,6 +9,7 @@ namespace pand::core {
 struct FileOperation {
   File *file;
   v8::Persistent<v8::Promise::Resolver> resolver;
+  v8::Persistent<v8::Object> handle;
   pd_fs_t op{};
 
   FileOperation(pd_io_t *ctx, File *file): file(file) {
@@ -17,7 +18,12 @@ struct FileOperation {
   }
 
   virtual ~FileOperation() {
-      resolver.Reset();
+    handle.Reset();
+    resolver.Reset();
+  }
+
+  void setObjectHandle(v8::Local<v8::Object> obj) {
+      this->handle.Reset(obj->GetIsolate(), obj);
   }
 
   void setResolver(v8::Local<v8::Promise::Resolver> value) {
@@ -31,8 +37,12 @@ struct FileOperation {
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
     auto *wrap = static_cast<FileOperation *>(op->udata);
+    if (op->type == pd_close_op)
+      wrap->file->isClosing = false;
+
     auto resolver = wrap->resolver.Get(isolate);
     if (op->status < 0) {
+
       auto err = Pand::makeSystemError(isolate, op->status);
       resolver->Reject(context, err).ToChecked();
       delete wrap;
@@ -52,6 +62,7 @@ struct FileOperation {
       result = v8::Integer::New(isolate, int(op->result.size));
       break;
     case pd_close_op:
+      wrap->file->isClosed = true;
     case pd_unknown_op:
       result = v8::Undefined(isolate);
       break;
@@ -75,6 +86,12 @@ struct BufferedFileOperation : FileOperation {
     this->buffer.Reset(buf->GetIsolate(), buf);
   }
 };
+
+void File::onCleanup(const v8::WeakCallbackInfo<File> &param) {
+  File *file = param.GetParameter();
+  // TODO: close open fd
+  delete file;
+}
 
 void File::initialize(v8::Local<v8::Object> exports) {
   Pand *pand = Pand::get();
@@ -213,7 +230,8 @@ void File::read(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Local<v8::Uint8Array> buffer = args[0].As<v8::Uint8Array>();
   auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
   auto *readOp = new BufferedFileOperation(ctx, file);
-  readOp->buffer.Reset(isolate, buffer);
+  readOp->setBuffer(buffer);;
+  readOp->setObjectHandle(args.This());
   readOp->setResolver(resolver);
 
   char *data = Buffer::getBytes(buffer);
@@ -241,6 +259,7 @@ void File::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
   auto *writeOp = new BufferedFileOperation(ctx, file);
   writeOp->setBuffer(buffer);
+  writeOp->setObjectHandle(args.This());
   writeOp->setResolver(resolver);
 
   char *data = Buffer::getBytes(buffer);
@@ -260,8 +279,10 @@ void File::close(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
   auto *closeOp = new FileOperation(ctx, file);
+  closeOp->setObjectHandle(args.This());
   closeOp->setResolver(resolver);
 
+  file->isClosing = true;
   pd_fs_close(&closeOp->op, file->fd, FileOperation::onDone);
 
   args.GetReturnValue().Set(resolver->GetPromise());
