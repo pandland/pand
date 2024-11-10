@@ -3,6 +3,7 @@
 #include "errors.h"
 #include "buffer.h"
 #include <iostream>
+#include <filesystem>
 
 namespace pand::core {
 
@@ -201,15 +202,20 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
   }
 
   int32_t flags = args[1]->Int32Value(context).ToChecked();
-  v8::String::Utf8Value path(isolate, args[0]);
+  v8::String::Utf8Value pathstr(isolate, args[0]);
   pd_io_t *ctx = Pand::get()->ctx;
 
   auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
   auto *openOp = new FileOperation(ctx, file);
   openOp->setResolver(resolver);
 
+  std::filesystem::path path(*pathstr);
+  if (path.is_relative()) {
+    path = std::filesystem::current_path() / path;
+    path = path.lexically_normal();
+  }
   // pd_fs_open copies data from path - we DO NOT transfer ownership here
-  pd_fs_open(&openOp->op, *path, flags, mode, FileOperation::onDone);
+  pd_fs_open(&openOp->op, path.c_str(), flags, mode, FileOperation::onDone);
 
   args.GetReturnValue().Set(resolver->GetPromise());
 }
