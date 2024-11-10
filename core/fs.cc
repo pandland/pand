@@ -23,6 +23,43 @@ struct FileOperation {
   void setResolver(v8::Local<v8::Promise::Resolver> value) {
     this->resolver.Reset(value->GetIsolate(), value);
   }
+
+  static void onDone(pd_fs_t *op) {
+    Pand *pand = Pand::get();
+    v8::Isolate *isolate = pand->isolate;
+    v8::HandleScope handle_scope(isolate);
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+    auto *wrap = static_cast<FileOperation *>(op->udata);
+    auto resolver = wrap->resolver.Get(isolate);
+    if (op->status < 0) {
+      auto err = Pand::makeSystemError(isolate, op->status);
+      resolver->Reject(context, err).ToChecked();
+      delete wrap;
+      return;
+    }
+
+    v8::Local<v8::Value> result;
+    pd_fs_type_t type = op->type;
+
+    switch (type) {
+    case pd_open_op:
+      wrap->file->fd = op->result.fd;
+      result = v8::Integer::New(isolate, op->result.fd);
+      break;
+    case pd_read_op:
+    case pd_write_op:
+      result = v8::Integer::New(isolate, int(op->result.size));
+      break;
+    case pd_close_op:
+    case pd_unknown_op:
+      result = v8::Undefined(isolate);
+      break;
+    }
+
+    resolver->Resolve(context, result).ToChecked();
+    delete wrap;
+  }
 };
 
 struct BufferedFileOperation : FileOperation {
@@ -32,6 +69,10 @@ struct BufferedFileOperation : FileOperation {
 
   ~BufferedFileOperation() override {
     buffer.Reset();
+  }
+
+  void setBuffer(v8::Local<v8::Uint8Array> buf) {
+    this->buffer.Reset(buf->GetIsolate(), buf);
   }
 };
 
@@ -151,31 +192,9 @@ void File::open(const v8::FunctionCallbackInfo<v8::Value> &args) {
   openOp->setResolver(resolver);
 
   // pd_fs_open copies data from path - we DO NOT transfer ownership here
-  pd_fs_open(&openOp->op, *path, flags, mode, File::onOpen);
+  pd_fs_open(&openOp->op, *path, flags, mode, FileOperation::onDone);
 
   args.GetReturnValue().Set(resolver->GetPromise());
-}
-
-void File::onOpen(pd_fs_t *op) {
-  Pand *pand = Pand::get();
-  v8::Isolate *isolate = pand->isolate;
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  auto *openOp = static_cast<FileOperation *>(op->udata);
-  auto resolver = openOp->resolver.Get(isolate);
-  if (op->status < 0) {
-    auto err = Pand::makeSystemError(isolate, op->status);
-    resolver->Reject(context, err).ToChecked();
-    delete openOp;
-
-    return;
-  }
-
-  openOp->file->isClosed = false;
-  openOp->file->fd = op->result.fd;
-  resolver->Resolve(context, Pand::value(isolate, op->result.fd)).ToChecked();
-  delete openOp;
 }
 
 void File::read(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -200,29 +219,9 @@ void File::read(const v8::FunctionCallbackInfo<v8::Value> &args) {
   char *data = Buffer::getBytes(buffer);
   size_t size = Buffer::getSize(buffer);
 
-  pd_fs_read(&readOp->op, file->fd, data, size, File::onRead);
+  pd_fs_read(&readOp->op, file->fd, data, size, BufferedFileOperation::onDone);
 
   args.GetReturnValue().Set(resolver->GetPromise());
-}
-
-void File::onRead(pd_fs_t *op) {
-  Pand *pand = Pand::get();
-  v8::Isolate *isolate = pand->isolate;
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  auto *readOp = static_cast<BufferedFileOperation *>(op->udata);
-  auto resolver = readOp->resolver.Get(isolate);
-  if (op->status < 0) {
-    auto err = Pand::makeSystemError(isolate, op->status);
-    resolver->Reject(context, err).ToChecked();
-    delete readOp;
-
-    return;
-  }
-
-  resolver->Resolve(context, Pand::integer(isolate, op->result.size)).ToChecked();
-  delete readOp;
 }
 
 void File::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -241,35 +240,15 @@ void File::write(const v8::FunctionCallbackInfo<v8::Value> &args) {
   v8::Local<v8::Uint8Array> buffer = args[0].As<v8::Uint8Array>();
   auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
   auto *writeOp = new BufferedFileOperation(ctx, file);
-  writeOp->buffer.Reset(isolate, buffer);
+  writeOp->setBuffer(buffer);
   writeOp->setResolver(resolver);
 
   char *data = Buffer::getBytes(buffer);
   size_t size = Buffer::getSize(buffer);
 
-  pd_fs_write(&writeOp->op, file->fd, data, size, File::onWrite);
+  pd_fs_write(&writeOp->op, file->fd, data, size, BufferedFileOperation::onDone);
 
   args.GetReturnValue().Set(resolver->GetPromise());
-}
-
-void File::onWrite(pd_fs_t *op) {
-  Pand *pand = Pand::get();
-  v8::Isolate *isolate = pand->isolate;
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  auto *writeOp = static_cast<BufferedFileOperation *>(op->udata);
-  auto resolver = writeOp->resolver.Get(isolate);
-  if (op->status < 0) {
-    auto err = Pand::makeSystemError(isolate, op->status);
-    resolver->Reject(context, err).ToChecked();
-    delete writeOp;
-
-    return;
-  }
-
-  resolver->Resolve(context, Pand::integer(isolate, op->result.size)).ToChecked();
-  delete writeOp;
 }
 
 void File::close(const v8::FunctionCallbackInfo<v8::Value> &args) {
@@ -283,29 +262,9 @@ void File::close(const v8::FunctionCallbackInfo<v8::Value> &args) {
   auto *closeOp = new FileOperation(ctx, file);
   closeOp->setResolver(resolver);
 
-  pd_fs_close(&closeOp->op, file->fd, File::onClose);
+  pd_fs_close(&closeOp->op, file->fd, FileOperation::onDone);
 
   args.GetReturnValue().Set(resolver->GetPromise());
-}
-
-void File::onClose(pd_fs_t *op) {
-  Pand *pand = Pand::get();
-  v8::Isolate *isolate = pand->isolate;
-  v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  auto *closeOp = static_cast<FileOperation *>(op->udata);
-  auto resolver = closeOp->resolver.Get(isolate);
-  if (op->status < 0) {
-    auto err = Pand::makeSystemError(isolate, op->status);
-    resolver->Reject(context, err).ToChecked();
-    delete closeOp;
-
-    return;
-  }
-  closeOp->file->isClosed = true;
-  resolver->Resolve(context, v8::Undefined(isolate)).ToChecked();
-  delete closeOp;
 }
 
 }
