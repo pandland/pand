@@ -5,7 +5,7 @@
 <h1 align="center">PandJS</h1>
 
 <div align="center">
-  <a href="https://github.com/pandland/pand/tree/main/docs">Documentation</a>
+  <a href="https://pandland.github.io/guides/getting-started">Documentation</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
   <a href="https://pandland.github.io">Website</a>
   <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
