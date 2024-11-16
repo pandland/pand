@@ -39,6 +39,7 @@ cmake-build-debug-visual-studio/
 cmake-build-debug
 
 # v8 related:
+deps/v8
 deps/.cipd
 deps/depot_tools
 deps/.gclient*

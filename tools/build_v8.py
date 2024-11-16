@@ -55,6 +55,7 @@ V8_BUILD_DIR=f"{V8_DIR}/out.gn/{V8_TARGET}"
 V8_VERSION="12.9.203"
 
 cmd(f"git checkout {V8_VERSION}", V8_DIR)
+cmd(f"gclient sync", V8_DIR)
 
 gn_location = os.path.join(V8_BUILD_DIR, "args.gn")
 gn_content = """dcheck_always_on = false
