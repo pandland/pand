@@ -10,12 +10,13 @@
 
 namespace pand::core {
 
-static Pand *instance = nullptr;
+// thread_local, because we will add worker threads in the future
+thread_local static Pand *instance = nullptr;
 
 Pand::Pand() {
   ctx = new pd_io_t;
   pd_io_init(ctx);
-  pd_threadpool_init(4);
+  pd_threadpool_init(4);  // it runs only once btw, so safe to call even inside worker threads
   pd_set_after_tick(ctx, Errors::checkPendingErrors);
   //v8::V8::SetFlagsFromString("--max-old-space-size=2048 --trace-gc");
   platform = v8::platform::NewDefaultPlatform();

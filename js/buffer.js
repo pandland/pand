@@ -57,6 +57,10 @@ export class Buffer extends Uint8Array {
     return super.from(...args);
   }
 
+  static alloc(size) {
+    return new Buffer(size);
+  }
+
   /**
    * Creates one buffer from multiple buffers (concatenates them).
    * It's diffent from Buffer.concat from Node.js

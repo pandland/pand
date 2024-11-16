@@ -43,8 +43,7 @@ export class FileHandle {
         return this.#handle.write(buffer);
     }
 
-    async close() {
-        await this.#handle.close();
-        this.#handle = null;
+    close() {
+        return this.#handle.close();
     }
 }
