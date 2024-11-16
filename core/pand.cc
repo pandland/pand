@@ -11,7 +11,7 @@
 namespace pand::core {
 
 // thread_local, because we will add worker threads in the future
-thread_local static Pand *instance = nullptr;
+static Pand *instance = nullptr;
 
 Pand::Pand() {
   ctx = new pd_io_t;
