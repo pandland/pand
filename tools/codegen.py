@@ -1,6 +1,6 @@
 import os
 
-def generate_cpp_header(folder_path, output_file):
+def generate_cpp_header(folder_path: str, output_file: str):
     header_guard = "JS_MODULES_H"
     with open(output_file, 'w') as f:
         f.write("/* AUTO GENERATED FILE - DO NOT EDIT IT MANUALLY */\n")

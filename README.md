@@ -40,9 +40,7 @@ You need to download v8 as dependency and it will take reasonable amount of time
 
 
 ```sh
-# Download v8 and build
-cmake -P v8.cmake
-
+python3 tools/build_v8.py
 # Build our actual project
 mkdir build
 cd build

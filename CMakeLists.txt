@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# In the newer v8 versions, lld may be required:
+#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+
 add_definitions(-DV8_ENABLE_SANDBOX=1 -DV8_COMPRESS_POINTERS=1)
 
 add_executable(pand 
@@ -30,11 +34,11 @@ add_executable(pand
     core/tcp_server.h
     core/tcp_server.cc
     core/main.cc
-        core/fs.h
-        core/fs.cc
+    core/fs.h
+    core/fs.cc
 )
 
-target_include_directories(pand SYSTEM
+target_include_directories(pand
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/include
     PRIVATE
@@ -47,11 +51,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/ada ada_build)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/simdutf simdutf_build)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt)
 
-target_link_directories(pand
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/out.gn/x64.release/obj
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/swcc/target/release)
+target_link_directories(pand PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/v8/out.gn/x64.release/obj)
 
 target_link_libraries(pand fmt::fmt)
 
@@ -71,6 +71,7 @@ else ()
             ada
             simdutf
             v8_libplatform
+            v8_libbase 
             v8_monolith
             pthread
             rt
