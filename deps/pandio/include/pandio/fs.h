@@ -35,6 +35,7 @@
 #define PD_FS_O_APPEND _O_APPEND
 
 #else
+#include <sys/stat.h>
 
 #define PD_FS_O_RDONLY O_RDONLY
 #define PD_FS_O_WRONLY O_WRONLY
@@ -62,6 +63,7 @@
     const char *buf;                                                           \
     size_t size;                                                               \
   })                                                                           \
+  X(stat, { pd_fd_t fd; })                                                     \
   X(close, { pd_fd_t fd; })
 
 #define FS_TYPES(type, params) pd_##type##_op,
@@ -78,6 +80,13 @@ union pd_fs_params_u {
 
 typedef union pd_fs_params_u pd_fs_params_t;
 
+// for now we only care about size for current goal
+struct pd_fs_stat_s {
+  size_t size;
+};
+
+typedef struct pd_fs_stat_s pd_fs_stat_t;
+
 struct pd_fs_s {
   pd_task_t task; // must be first, because later we cast from it
   pd_io_t *ctx;
@@ -89,12 +98,14 @@ struct pd_fs_s {
   union {
     pd_fd_t fd;
     ssize_t size;
+    pd_fs_stat_t st;
   } result;
 };
 
 typedef struct pd_fs_s pd_fs_t;
 
 typedef void (*pd_fs_cb_t)(pd_fs_t *);
+
 
 void pd_fs_init(pd_io_t *, pd_fs_t *);
 
@@ -103,5 +114,7 @@ void pd_fs_open(pd_fs_t *, const char *, int, int, pd_fs_cb_t);
 void pd_fs_read(pd_fs_t *, pd_fd_t, char *, size_t, pd_fs_cb_t);
 
 void pd_fs_write(pd_fs_t *, pd_fd_t, const char *, size_t, pd_fs_cb_t);
+
+void pd_fs_stat(pd_fs_t *, pd_fd_t, pd_fs_cb_t);
 
 void pd_fs_close(pd_fs_t *, pd_fd_t, pd_fs_cb_t);

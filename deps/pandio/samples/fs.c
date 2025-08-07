@@ -1,3 +1,4 @@
+#include "pandio/fs.h"
 #include <pandio.h>
 #include <stdio.h>
 
@@ -51,6 +52,13 @@ cleanup:
   free(op);
 }
 
+
+void on_stat(pd_fs_t *op) {
+  printf("size from fstat: %ld\n", op->result.st.size);
+  int fd = op->params.stat.fd;
+  pd_fs_close(op, fd, on_close);
+}
+
 void on_write(pd_fs_t *op) {
   if (op->status < 0) {
     printf("error(write): %s\n", pd_errstr(op->status));
@@ -59,10 +67,9 @@ void on_write(pd_fs_t *op) {
   }
 
   printf("written: %ld\n", op->result.size);
-  pd_fd_t fd = op->params.read.fd;
+  pd_fd_t fd = op->params.write.fd;
   pd_fs_init(op->ctx, op);
-  // close(fd);  // for testing error handling inside on_close
-  pd_fs_close(op, fd, on_close);
+  pd_fs_stat(op, fd, on_stat);
 }
 
 void start_writing(pd_fs_t *op) {

@@ -139,6 +139,34 @@ void pd_fs_write(pd_fs_t *op, pd_fd_t fd, const char *buf, size_t size,
 }
 
 
+void pd__fs_stat_work(pd_task_t *task) {
+  pd_fs_t *op = (pd_fs_t *)(task);
+  struct stat st;
+  int status;
+  int fd = op->params.stat.fd;
+
+  do {
+    status = fstat(fd, &st);
+  } while (status < 0 && errno == EINTR);
+
+  if (status < 0) {
+    op->status = pd_errno();
+  } else {
+    op->result.st.size = st.st_size;
+    op->status = 0;
+  }
+}
+
+void pd_fs_stat(pd_fs_t *op, pd_fd_t fd, void (*cb)(pd_fs_t *)) {
+  op->type = pd_stat_op;
+  op->cb = cb;
+  op->params.stat.fd = fd;
+
+  op->task.work = pd__fs_stat_work;
+  pd_task_submit(op->ctx, &op->task);
+}
+
+
 void pd__fs_close_work(pd_task_t *task) {
   pd_fs_t *op = (pd_fs_t *)(task);
   int status;

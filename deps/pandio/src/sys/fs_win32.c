@@ -163,3 +163,27 @@ void pd_fs_write(pd_fs_t *op, pd_fd_t fd, const char *buf, size_t size,
 
   pd_task_submit(op->ctx, &op->task);
 }
+
+
+void pd_fs_stat_work(pd_task_t *task) {
+  pd_fs_t *op = (pd_fs_t *)(task);
+  pd_fd_t handle = op->params.stat.fd;
+  BY_HANDLE_FILE_INFORMATION info;
+
+  if (GetFileInformationByHandle(handle, &info)) {
+    op->status = 0;
+    op->result.st.size = ((uint64_t)info.nFileSizeHigh << 32) | info.nFileSizeLow;
+  } else {
+    op->status = pd_errno();
+    op->result.st.size = -1;
+  }
+}
+
+void pd_fs_stat(pd_fs_t *op, pd_fd_t fd, pd_fs_cb_t cb) {
+  op->params.stat.fd = fd;
+  op->type = pd_stat_op;
+  op->cb = cb;
+  op->task.work = pd_fs_stat_work;
+
+  pd_task_submit(op->ctx, &op->task);
+}
