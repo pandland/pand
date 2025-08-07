@@ -1,7 +1,8 @@
 import { open, O_RDONLY } from 'std:fs';
 
 const file = await open("./README.md", O_RDONLY);
-const buf = new Buffer(1024);
+const stat = await file.fstat();
+const buf = new Buffer(stat.size);
 const size = await file.read(buf);
 console.log('size:', size);
 const content = buf.subarray(0, size)

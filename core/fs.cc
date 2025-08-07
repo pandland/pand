@@ -67,6 +67,13 @@ struct FileOperation {
     case pd_unknown_op:
       result = v8::Undefined(isolate);
       break;
+    case pd_stat_op:
+      result = v8::Object::New(isolate);
+      result.As<v8::Object>()->Set(
+          context, Pand::symbol(isolate, "size"),
+          v8::Integer::New(isolate, op->result.st.size))
+          .ToChecked();
+      break;
     }
 
     resolver->Resolve(context, result).ToChecked();
@@ -120,6 +127,10 @@ void File::initialize(v8::Local<v8::Object> exports) {
   v8::Local<v8::FunctionTemplate> closeT =
       v8::FunctionTemplate::New(isolate, File::close);
   t->PrototypeTemplate()->Set(isolate, "close", closeT);
+
+  v8::Local<v8::FunctionTemplate> fstatT =
+        v8::FunctionTemplate::New(isolate, File::fstat);
+  t->PrototypeTemplate()->Set(isolate, "fstat", fstatT);
 
   v8::Local<v8::Function> func = t->GetFunction(context).ToLocalChecked();
   exports
@@ -245,6 +256,23 @@ void File::read(const v8::FunctionCallbackInfo<v8::Value> &args) {
 
   pd_fs_read(&readOp->op, file->fd, data, size, BufferedFileOperation::onDone);
 
+  args.GetReturnValue().Set(resolver->GetPromise());
+}
+
+void File::fstat(const v8::FunctionCallbackInfo<v8::Value> &args) {
+  v8::Isolate *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
+
+  pd_io_t *ctx = Pand::get()->ctx;
+  auto file = static_cast<File *>(args.This()->GetAlignedPointerFromInternalField(0));
+
+  auto *statOp = new FileOperation(ctx, file);
+  statOp->setObjectHandle(args.This());
+  statOp->setResolver(resolver);
+
+  pd_fs_stat(&statOp->op, file->fd, FileOperation::onDone);
   args.GetReturnValue().Set(resolver->GetPromise());
 }
 

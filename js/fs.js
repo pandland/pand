@@ -42,8 +42,11 @@ export class FileHandle {
     write(buffer) {
         return this.#handle.write(buffer);
     }
-
     close() {
         return this.#handle.close();
+    }
+
+    fstat() {
+        return this.#handle.fstat();
     }
 }

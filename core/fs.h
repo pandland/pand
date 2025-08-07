@@ -36,6 +36,7 @@ public:
 
   static void close(const v8::FunctionCallbackInfo<v8::Value> &);
 
+  static void fstat(const v8::FunctionCallbackInfo<v8::Value> &);
 };
 
 }
