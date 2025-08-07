@@ -1,4 +1,4 @@
-import { open, O_RDONLY } from 'std:fs';
+import { open, O_RDONLY, readFile } from 'std:fs';
 
 const file = await open("./README.md", O_RDONLY);
 const stat = await file.fstat();
@@ -10,3 +10,6 @@ console.log(content);
 console.log(content.toString('utf8'))
 
 await file.close();
+
+const bin = await readFile("./README.md");
+console.log(bin);

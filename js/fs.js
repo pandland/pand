@@ -1,3 +1,4 @@
+import { Buffer } from 'std:buffer';
 const fs = Runtime.bind("fs");
 
 export const O_CREAT = fs.O_CREAT;
@@ -25,6 +26,33 @@ export async function open(path, flags, mode) {
     const fd = await handle.open(path, flags, mode);
 
     return new FileHandle(handle, fd);
+}
+
+export async function readFile(path, options = {}) {
+    let encoding = null;
+    if (typeof options === 'string') {
+        encoding = options;
+    } else if (options && typeof options === 'object') {
+        encoding = options.encoding;
+    }
+
+    if (typeof path !== 'string') {
+        throw new TypeError('Path must be a string');
+    }
+
+    const file = await open(path, O_RDONLY);
+    try {
+        const stat = await file.fstat();
+        const buf = new Buffer(stat.size);
+        const size = await file.read(buf);
+        const view = buf.subarray(0, size);
+        if (encoding) {
+            return view.toString(encoding);
+        }
+        return view;
+    } finally {
+        await file.close();
+    }
 }
 
 export class FileHandle {
