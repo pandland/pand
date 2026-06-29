@@ -49,3 +49,6 @@ deps/.gcs_entries
 ex.js
 _net.js
 _node.js
+
+.venv
+
