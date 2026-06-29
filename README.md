@@ -34,7 +34,7 @@ git clone https://github.com/pandland/pand.git
 
 ### Building
 
-Make sure you have CMake and python3 installed. Build infrastructure is still in **early stage**.
+Make sure you have CMake and python 3.11 installed (3.13+ versions are **NOT SUPPORTED**). Build infrastructure is still in **early stage**.
 
 You need to download v8 as dependency and it will take reasonable amount of time to compile (even 40 mins - depends on machine).
 
