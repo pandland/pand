@@ -156,10 +156,11 @@ void pd_io_run(pd_io_t *ctx) {
         }
 
         pd_timers_run(ctx);
-        timeout = pd_timers_next(ctx);
         pd__tcp_pending_close(ctx);
 
         if (ctx->after_tick)
             ctx->after_tick(ctx);
+
+        timeout = pd_timers_next(ctx);
     }
 }
