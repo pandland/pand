@@ -235,7 +235,13 @@ void TcpStream::onData(pd_tcp_t *handle, char *buffer, size_t size) {
     Pand::makeCallback(obj, isolate, "onError", argv, 1);
     return;
   }
-
+  
+  if (status == 0) {
+    // EOF — pandio already called pd_tcp_close(); onClose() will notify JS.
+    // Free the backing store allocated by readAllocator without propagating to JS.
+    stream->read_bs.reset();
+    return;
+  }
   // having much larger underlying ArrayBuffer than Buffer user receive may lead
   // to problems, so let's copy...
   if (size != stream->read_bs->ByteLength()) {
